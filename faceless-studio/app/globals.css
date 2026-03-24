@@ -356,3 +356,33 @@ body {
     --section-pad: clamp(3.5rem, 8vw, 5rem);
   }
 }
+
+/* ── Paste these at the BOTTOM of your globals.css file ── */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* Focus styles for inputs/selects */
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(233, 161, 0, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(233, 161, 0, 0.08);
+}
+
+/* Select option background fix (browsers) */
+select option {
+  background: #0a0a14;
+  color: #EEF2FF;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(238,242,255,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(233,161,0,0.4); }
+
