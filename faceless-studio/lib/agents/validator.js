@@ -104,10 +104,13 @@ export function checkField(value, fieldName) {
   }
 
   // Check for unfilled bracket placeholders
+  // Soft fields (description/caption): warning only — route strips brackets before validate.
+  // All other fields: critical — a script or title with [insert X] is unusable.
+  const SOFT_FIELDS = new Set(['description', 'caption', 'meta_description', 'seo_title']);
   if (/\[.{1,40}\]/.test(strVal) || /\(.{1,40}here\)/i.test(strVal)) {
     issues.push({
       field:    fieldName,
-      severity: 'critical',
+      severity: SOFT_FIELDS.has(fieldName) ? 'warning' : 'critical',
       message:  `Field "${fieldName}" contains unfilled placeholder brackets`,
     });
   }

@@ -444,7 +444,7 @@ OUTPUT FORMAT — Return ONLY this JSON, nothing else:
       }
     ],
     "recommended_title": "exact copy of the best title from title_options",
-    "description": "Full YouTube description, 210-240 words. Start with a hook sentence (not 'In this video'). Include: what the viewer will learn (3 bullet points), timestamps for main chapters, relevant keywords naturally embedded, call to action, creator social links placeholder. Fully written — no placeholders except social links.",
+    "description": "Full YouTube description, 210-240 words. Start with a hook sentence (not 'In this video'). Include: what the viewer will learn (3 bullet points with actual content), timestamps for main chapters (e.g. 0:00 Intro, 1:30 Main Point), relevant keywords naturally embedded, and a call to action at the end. For social links write: Follow on Instagram | link in bio — never use bracket placeholders. Zero square brackets anywhere in this field. Fully written and complete.",
     "tags": ["tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10", "tag11", "tag12"],
     "primary_keyword": "the single main keyword this video targets",
     "secondary_keywords": ["kw1", "kw2", "kw3", "kw4", "kw5"],
@@ -468,7 +468,7 @@ OUTPUT FORMAT — Return ONLY this JSON, nothing else:
   },
   "blog": {
     "seo_title": "SEO-optimised blog post title — includes primary keyword, under 60 chars",
-    "meta_description": "Meta description under 155 chars — includes keyword, compelling reason to click",
+    "meta_description": "Meta description. HARD LIMIT: 150 characters maximum. Count every character including spaces. Include the primary keyword and a compelling reason to click. Stop writing at 150 characters.",
     "url_slug": "url-friendly-slug-with-hyphens",
     "primary_keyword": "main keyword targeted",
     "secondary_keywords": ["kw1", "kw2", "kw3", "kw4"],
@@ -517,6 +517,103 @@ OUTPUT FORMAT — Return ONLY this JSON, nothing else:
     { "day": 6, "content_type": "...", "topic_angle": "...", "platform": "...", "repurpose_from": "..." },
     { "day": 7, "content_type": "...", "topic_angle": "...", "platform": "...", "repurpose_from": "..." }
   ]
+}
+`.trim();
+}
+
+// ─── Creator Prompt (Compact) ─────────────────────────────────────────────────
+// Used as fallback when the full prompt exceeds Gemini's token output limit.
+// Produces the SAME required fields but with tighter length constraints.
+// Target: fits within 6000 output tokens for any platform/format.
+export function buildCreatorPromptCompact({
+  niche, platform, tone, language, creatorType,
+  chosenTopic, chosenHook, hookTrigger, hookAnalysis,
+  competitorGap, targetAudience,
+}) {
+  const p = platform.toLowerCase();
+  const isShortForm = p.includes('reels') || p.includes('tiktok') || p.includes('shorts');
+  const isBlog      = p.includes('blog');
+  const isPodcast   = p.includes('podcast');
+
+  const scriptTarget = isShortForm ? '150-200' : isBlog ? '700-900' : isPodcast ? '600-800' : '500-700';
+  const sceneTarget  = isShortForm ? '4' : '6';
+  const format       = isShortForm ? 'Short-form (60-90s)' : isBlog ? 'Blog article' : isPodcast ? 'Podcast episode' : 'YouTube video';
+
+  return `
+You are the Creator Agent for Studio AI. Write a COMPLETE, production-ready script.
+This is a compact generation — fit everything within the token budget by being precise, not verbose.
+Every field must be fully written. No truncation. No placeholders.
+
+BRIEF:
+- Niche: ${niche}
+- Platform: ${platform} (${format})
+- Creator Type: ${creatorType}
+- Language: ${language || 'English'}
+- Tone: ${tone || 'Educational'}
+- Topic: ${chosenTopic}
+- Hook: "${chosenHook}"
+- Hook Trigger: ${hookTrigger || 'CURIOSITY_GAP'}
+- Audience: ${targetAudience || 'Content creators and digital entrepreneurs'}
+- Competitor Gap: ${competitorGap || 'Go deeper than surface-level advice'}
+
+COMPACT RULES:
+- full_script: ${scriptTarget} words. Complete, performable, word-for-word. Start with the exact hook.
+- scenes: exactly ${sceneTarget} scenes. Each scene voiceover 1-2 sentences. No padding.
+- shorts_script: 80-120 words. Standalone 60-second version.
+- All other fields: concise but complete. 1-2 sentences per explanation field.
+- JSON must be syntactically valid and complete. Close every string, array, and object.
+
+Return ONLY this JSON:
+
+{
+  "full_script": "Complete word-for-word script starting with: ${chosenHook.replace(/"/g, '\\"')}",
+  "estimated_duration": "${isShortForm ? '60-90 seconds' : isBlog ? '5-7 min read' : '5-8 minutes'}",
+  "word_count": 0,
+  "scenes": [
+    {
+      "scene_number": 1,
+      "timestamp_start": "0:00",
+      "timestamp_end": "0:30",
+      "section_type": "HOOK",
+      "voiceover": "exact words for this scene",
+      "visual_direction": "what to show on screen",
+      "overlay_text": null,
+      "b_roll_search_term": "search term for stock footage or null",
+      "tone_direction": "how to deliver this",
+      "retention_technique": "technique used here"
+    }
+  ],
+  "hook_breakdown": {
+    "hook_text": "${chosenHook.replace(/"/g, '\\"')}",
+    "trigger_type": "${hookTrigger || 'CURIOSITY_GAP'}",
+    "psychological_mechanism": "what happens neurologically when viewer encounters this hook",
+    "why_first_3_seconds": "why this works in the first 3 seconds on this platform",
+    "what_viewer_is_thinking": "exact internal monologue of the viewer",
+    "what_happens_if_hook_fails": "what viewer does and why this hook avoids that"
+  },
+  "shorts_script": "Complete standalone 60-second script. Different from full_script. Every word written.",
+  "pattern_interrupts": [
+    {
+      "timestamp": "approximate time",
+      "technique": "technique name",
+      "script_line": "exact line from the script"
+    }
+  ],
+  "cta_options": [
+    {
+      "cta_text": "exact word-for-word CTA",
+      "placement": "where in the video",
+      "goal": "subscribe | like | comment | follow | purchase",
+      "why_it_works": "why this CTA works here"
+    },
+    {
+      "cta_text": "second CTA option",
+      "placement": "where in the video",
+      "goal": "subscribe | like | comment | follow | purchase",
+      "why_it_works": "why this CTA works here"
+    }
+  ],
+  "content_notes": null
 }
 `.trim();
 }

@@ -3,6 +3,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
+// ── Color tokens ──────────────────────────────────────────────────────────────
+const CA  = '#D4A847';
+const C1  = '#EEEEF5';
+const C2  = 'rgba(238,238,245,0.55)';
+const C3  = 'rgba(238,238,245,0.28)';
+const CB  = 'rgba(255,255,255,0.07)';
+const BG  = '#07070E';
+
 export default function DashboardPage() {
   const router   = useRouter();
   const supabase = getSupabaseBrowser();
@@ -16,163 +24,255 @@ export default function DashboardPage() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { router.replace('/login'); return; }
       setUser(session.user);
-
-      const [usageRes, historyRes] = await Promise.all([
-        fetch('/api/usage', { headers: { Authorization: `Bearer ${session.access_token}` } }),
-        // History: read from Supabase directly via browser client
+      const [usageRes, histRes] = await Promise.all([
+        fetch('/api/usage', { headers:{ Authorization:`Bearer ${session.access_token}` }}),
         supabase.from('generations')
-          .select('id, niche, platform, creator_type, chosen_topic, chosen_hook, generated_at')
-          .order('generated_at', { ascending: false })
+          .select('id,niche,platform,creator_type,chosen_topic,chosen_hook,generated_at')
+          .order('generated_at',{ ascending:false })
           .limit(20),
       ]);
-
       const usageJson = await usageRes.json();
       if (usageJson.success) setUsage(usageJson.usage);
-      if (!historyRes.error) setHistory(historyRes.data || []);
+      if (!histRes.error) setHistory(histRes.data || []);
       setLoading(false);
     });
   }, []);
 
   if (loading) return (
-    <div style={styles.splash}>
-      <div style={styles.spinner} />
+    <div style={{minHeight:'100vh',background:BG,display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <Spinner />
     </div>
   );
 
+  const planLabel = usage?.plan?.toUpperCase() || 'FREE';
+  const resetDate = usage?.reset_date
+    ? new Date(usage.reset_date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})
+    : null;
+
   return (
-    <div style={styles.page}>
-      <div style={{...styles.blob, top:'-10%', left:'-5%', background:'radial-gradient(circle, rgba(233,161,0,0.07) 0%, transparent 60%)'}} />
+    <div style={D.root}>
 
-      {/* Nav */}
-      <nav style={styles.nav}>
-        <div style={styles.navLogo}>
-          <span style={{color:'var(--gold)',fontSize:'20px'}}>⬡</span>
-          <span style={styles.navLogoText}>Studio AI</span>
+      {/* ── Topbar ── */}
+      <header style={D.topbar}>
+        <div style={D.tbLeft}>
+          <HexLogo />
+          <span style={D.brand}>Studio AI</span>
         </div>
-        <div style={styles.navRight}>
-          <button style={styles.genBtn} onClick={() => router.push('/generate')}>+ Generate</button>
-          <button style={styles.navBtn} onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>Sign out</button>
+        <div style={D.tbRight}>
+          <button style={D.ghost} onClick={() => router.push('/generate')}>+ Generate</button>
+          <button style={D.btn} onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>Sign out</button>
         </div>
-      </nav>
+      </header>
 
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.header}>
-          <h1 style={styles.h1}>Dashboard</h1>
-          <p style={styles.subtext}>{user?.email}</p>
-        </div>
+      <div style={D.container}>
 
-        {/* Stats */}
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <p style={styles.statVal}>{usage?.plan?.toUpperCase() || 'FREE'}</p>
-            <p style={styles.statLabel}>Current Plan</p>
+        {/* ── Page title ── */}
+        <div style={D.pageHead}>
+          <div>
+            <h1 style={D.h1}>Dashboard</h1>
+            <p style={D.email}>{user?.email}</p>
           </div>
-          <div style={styles.statCard}>
-            <p style={styles.statVal}>{usage?.used || 0}</p>
-            <p style={styles.statLabel}>This Month</p>
-          </div>
-          <div style={{...styles.statCard, borderColor: usage?.plan === 'free' ? 'rgba(233,161,0,0.2)' : 'rgba(0,220,130,0.2)'}}>
-            <p style={{...styles.statVal, color: usage?.remaining === 0 ? '#ff6b6b' : 'var(--gold)'}}>
-              {usage?.plan === 'free' ? `${usage?.remaining ?? 0} / ${usage?.limit}` : '∞'}
-            </p>
-            <p style={styles.statLabel}>Remaining</p>
-          </div>
-          <div style={styles.statCard}>
-            <p style={styles.statVal}>{history.length}</p>
-            <p style={styles.statLabel}>Total Generations</p>
-          </div>
+          <button style={D.genBtn} onClick={() => router.push('/generate')}>
+            Generate content →
+          </button>
         </div>
 
-        {/* Reset date */}
-        {usage?.reset_date && (
-          <p style={styles.resetNote}>
-            Free plan resets {new Date(usage.reset_date).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })}
-          </p>
+        {/* ── Stats band ── */}
+        <div style={D.statsRow}>
+          <StatCard label="Plan" value={planLabel} accent={usage?.plan !== 'free'} />
+          <StatCard label="This month" value={String(usage?.used || 0)} />
+          <StatCard
+            label="Remaining"
+            value={usage?.plan === 'free' ? `${usage?.remaining ?? 0} / ${usage?.limit}` : '∞'}
+            warn={(usage?.remaining ?? 1) === 0 && usage?.plan === 'free'}
+          />
+          <StatCard label="All time" value={String(history.length)} />
+        </div>
+
+        {resetDate && usage?.plan === 'free' && (
+          <p style={D.resetLine}>Free plan resets {resetDate}</p>
         )}
 
-        {/* History */}
-        <div style={styles.historySection}>
-          <div style={styles.historyHeader}>
-            <h2 style={styles.h2}>Recent Generations</h2>
-            {history.length > 0 && <span style={styles.historyCount}>{history.length} items</span>}
+        {/* ── Upgrade banner (only when at limit) ── */}
+        {usage?.plan === 'free' && (usage?.remaining ?? 1) === 0 && (
+          <div style={D.upgradeBanner}>
+            <div>
+              <p style={D.upgradeTitle}>Monthly limit reached</p>
+              <p style={D.upgradeSub}>Upgrade to Creator Pro for unlimited generations and all 13 AI agents.</p>
+            </div>
+            <button style={D.upgradeBtn}>Upgrade — ₹999/mo</button>
+          </div>
+        )}
+
+        {/* ── History ── */}
+        <div style={D.section}>
+          <div style={D.sectionHead}>
+            <span style={D.sectionTitle}>Recent Generations</span>
+            {history.length > 0 && <span style={D.badge}>{history.length}</span>}
           </div>
 
           {history.length === 0 ? (
-            <div style={styles.emptyState}>
-              <p style={styles.emptyIcon}>⬡</p>
-              <p style={styles.emptyTitle}>No generations yet</p>
-              <p style={styles.emptyDesc}>Generate your first content pack to see it here.</p>
-              <button style={styles.emptyBtn} onClick={() => router.push('/generate')}>
-                Start Generating
-              </button>
+            <div style={D.empty}>
+              <p style={D.emptyIcon}>⬡</p>
+              <p style={D.emptyTitle}>No generations yet</p>
+              <p style={D.emptySub}>Your content packs will appear here after your first generation.</p>
+              <button style={D.emptyBtn} onClick={() => router.push('/generate')}>Start generating</button>
             </div>
           ) : (
-            <div style={styles.historyList}>
-              {history.map((gen) => (
-                <div key={gen.id} style={styles.historyCard}>
-                  <div style={styles.historyTop}>
-                    <span style={styles.historyPlatform}>{gen.platform}</span>
-                    <span style={styles.historyType}>{gen.creator_type}</span>
-                    <span style={styles.historyDate}>
-                      {new Date(gen.generated_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}
-                    </span>
+            <div style={D.tableWrap}>
+              {/* Header */}
+              <div style={D.tableHead}>
+                <span style={{...D.col, ...D.colNiche}}>Niche / Topic</span>
+                <span style={{...D.col, ...D.colPlatform}}>Platform</span>
+                <span style={{...D.col, ...D.colType}}>Type</span>
+                <span style={{...D.col, ...D.colDate}}>Date</span>
+              </div>
+              {/* Rows */}
+              <div style={D.tableBody}>
+                {history.map((gen) => (
+                  <div key={gen.id} style={D.tableRow}>
+                    <div style={{...D.col, ...D.colNiche, flexDirection:'column', alignItems:'flex-start', gap:'4px'}}>
+                      <span style={{fontSize:'13px',color:C1,fontWeight:'500',lineHeight:'1.4'}}>{gen.chosen_topic || gen.niche}</span>
+                      {gen.chosen_hook && (
+                        <span style={{fontSize:'12px',color:C3,fontStyle:'italic',lineHeight:'1.4',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'100%'}}>
+                          "{gen.chosen_hook}"
+                        </span>
+                      )}
+                    </div>
+                    <div style={{...D.col, ...D.colPlatform}}>
+                      <span style={D.platTag}>{gen.platform}</span>
+                    </div>
+                    <div style={{...D.col, ...D.colType}}>
+                      <span style={{fontSize:'12px',color:C3}}>{gen.creator_type}</span>
+                    </div>
+                    <div style={{...D.col, ...D.colDate}}>
+                      <span style={{fontSize:'12px',color:C3,fontFamily:'var(--FM)',whiteSpace:'nowrap'}}>
+                        {new Date(gen.generated_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+                      </span>
+                    </div>
                   </div>
-                  <p style={styles.historyNiche}>{gen.niche}</p>
-                  {gen.chosen_topic && <p style={styles.historyTopic}>{gen.chosen_topic}</p>}
-                  {gen.chosen_hook && <p style={styles.historyHook}>"{gen.chosen_hook}"</p>}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
+
+        {/* ── Plan info ── */}
+        <div style={D.planSection}>
+          <div style={D.planCard}>
+            <div>
+              <p style={D.planLabel}>Current Plan</p>
+              <p style={D.planName}>{planLabel}</p>
+            </div>
+            {usage?.plan === 'free' && (
+              <div style={{textAlign:'right'}}>
+                <p style={{fontSize:'12px',color:C3,margin:'0 0 8px'}}>Unlock all 13 AI agents + unlimited generations</p>
+                <button style={D.planUpgradeBtn}>View Plans →</button>
+              </div>
+            )}
+          </div>
+
+          <div style={D.featureGrid}>
+            {[
+              { label:'Research Agent',   included: true,  note:'Trend analysis & hooks'       },
+              { label:'Creator Agent',    included: true,  note:'Full script & scene breakdown' },
+              { label:'Publisher Agent',  included: true,  note:'SEO & social distribution'    },
+              { label:'Trend Spy',        included: usage?.plan !== 'free', note:'Pro+' },
+              { label:'Hook Upgrader',    included: usage?.plan !== 'free', note:'Pro+' },
+              { label:'Script Localiser', included: usage?.plan === 'studio', note:'Studio only' },
+            ].map(f => (
+              <div key={f.label} style={D.featureRow}>
+                <span style={{...D.featureDot, background: f.included ? '#3ECF8E' : CB}} />
+                <span style={{fontSize:'13px',color: f.included ? C2 : C3}}>{f.label}</span>
+                <span style={{fontSize:'11px',color:C3,marginLeft:'auto'}}>{f.note}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
       </div>
     </div>
   );
 }
 
-const styles = {
-  splash: { minHeight:'100vh', background:'var(--void)', display:'flex', alignItems:'center', justifyContent:'center' },
-  spinner: { width:'36px', height:'36px', border:'3px solid rgba(233,161,0,0.2)', borderTopColor:'var(--gold)', borderRadius:'50%', animation:'spin 0.8s linear infinite' },
-  page: { minHeight:'100vh', background:'var(--void)', fontFamily:'var(--FB)', position:'relative', overflow:'hidden' },
-  blob: { position:'absolute', width:'600px', height:'600px', borderRadius:'50%', pointerEvents:'none' },
-  nav: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 40px', borderBottom:'1px solid rgba(238,242,255,0.07)', position:'relative', zIndex:10 },
-  navLogo: { display:'flex', alignItems:'center', gap:'10px' },
-  navLogoText: { fontFamily:'var(--FH)', fontSize:'18px', fontWeight:'700', color:'var(--white)', letterSpacing:'-0.02em' },
-  navRight: { display:'flex', gap:'12px', alignItems:'center' },
-  genBtn: { background:'linear-gradient(135deg, var(--gold) 0%, var(--gold-hi) 100%)', border:'none', borderRadius:'8px', padding:'9px 20px', color:'#000', fontSize:'13px', fontWeight:'700', fontFamily:'var(--FB)', cursor:'pointer' },
-  navBtn: { background:'transparent', border:'1px solid rgba(238,242,255,0.15)', borderRadius:'8px', padding:'8px 16px', color:'var(--w5)', fontSize:'13px', cursor:'pointer', fontFamily:'var(--FB)' },
+// ── Components ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, accent, warn }) {
+  return (
+    <div style={{...D.statCard, borderColor: warn ? 'rgba(248,113,113,0.2)' : accent ? 'rgba(212,168,71,0.2)' : CB}}>
+      <span style={{...D.statVal, color: warn ? '#F87171' : accent ? CA : CA}}>{value}</span>
+      <span style={D.statLbl}>{label}</span>
+    </div>
+  );
+}
+function HexLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+      <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#D4A847" strokeWidth="1.4" fill="none"/>
+      <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#D4A847" fillOpacity="0.12"/>
+    </svg>
+  );
+}
+function Spinner() {
+  return <span style={{width:'22px',height:'22px',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.06)',borderTopColor:CA,display:'block',animation:'spin 0.7s linear infinite'}} />;
+}
 
-  container: { maxWidth:'820px', margin:'0 auto', padding:'48px 24px 80px', position:'relative', zIndex:1 },
-  header: { marginBottom:'32px' },
-  h1: { fontFamily:'var(--FH)', fontSize:'clamp(24px, 3vw, 32px)', fontWeight:'800', color:'var(--white)', margin:'0 0 6px', letterSpacing:'-0.03em' },
-  subtext: { color:'var(--w3)', fontSize:'14px', margin:0 },
-  h2: { fontFamily:'var(--FH)', fontSize:'18px', fontWeight:'700', color:'var(--white)', margin:0 },
+// ── Styles ────────────────────────────────────────────────────────────────────
+const D = {
+  root:      { minHeight:'100vh',background:BG,fontFamily:'var(--FB)',color:C1 },
+  topbar:    { display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 28px',height:'54px',borderBottom:`1px solid ${CB}`,position:'sticky',top:0,background:'rgba(7,7,14,0.93)',backdropFilter:'blur(12px)',zIndex:50 },
+  tbLeft:    { display:'flex',alignItems:'center',gap:'10px' },
+  brand:     { fontFamily:'var(--FH)',fontSize:'15px',fontWeight:'700',color:C1,letterSpacing:'-0.02em' },
+  tbRight:   { display:'flex',gap:'12px',alignItems:'center' },
+  ghost:     { background:'transparent',border:'none',color:C2,fontSize:'13px',cursor:'pointer',fontFamily:'var(--FB)',padding:'4px 0' },
+  btn:       { background:'transparent',border:`1px solid ${CB}`,borderRadius:'6px',padding:'6px 14px',color:C2,fontSize:'13px',cursor:'pointer',fontFamily:'var(--FB)' },
 
-  statsGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'12px', marginBottom:'12px' },
-  statCard: { background:'rgba(238,242,255,0.04)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'14px', padding:'24px', textAlign:'center', transition:'border-color 0.2s' },
-  statVal: { fontFamily:'var(--FH)', fontSize:'28px', fontWeight:'800', color:'var(--gold)', margin:'0 0 6px' },
-  statLabel: { color:'var(--w3)', fontSize:'12px', margin:0, textTransform:'uppercase', letterSpacing:'0.05em' },
+  container: { maxWidth:'900px',margin:'0 auto',padding:'44px 28px 80px',display:'flex',flexDirection:'column',gap:'32px' },
 
-  resetNote: { color:'var(--w3)', fontSize:'12px', marginBottom:'40px', textAlign:'center' },
+  pageHead:  { display:'flex',alignItems:'flex-start',justifyContent:'space-between' },
+  h1:        { fontFamily:'var(--FH)',fontSize:'24px',fontWeight:'800',color:C1,margin:'0 0 4px',letterSpacing:'-0.03em' },
+  email:     { fontSize:'13px',color:C3,margin:0 },
+  genBtn:    { background:CA,border:'none',borderRadius:'7px',padding:'10px 20px',color:'#000',fontSize:'13px',fontWeight:'700',fontFamily:'var(--FH)',cursor:'pointer',flexShrink:0 },
 
-  historySection: { marginTop:'8px' },
-  historyHeader: { display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' },
-  historyCount: { background:'rgba(238,242,255,0.08)', borderRadius:'20px', padding:'4px 12px', color:'var(--w5)', fontSize:'12px' },
+  statsRow:  { display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:'10px' },
+  statCard:  { border:'1px solid',borderRadius:'8px',padding:'18px 16px',textAlign:'center',background:'rgba(255,255,255,0.02)',transition:'border-color 0.2s' },
+  statVal:   { display:'block',fontFamily:'var(--FH)',fontSize:'24px',fontWeight:'800',marginBottom:'4px' },
+  statLbl:   { display:'block',fontSize:'11px',color:C3,textTransform:'uppercase',letterSpacing:'0.07em',fontWeight:'600' },
 
-  emptyState: { textAlign:'center', padding:'64px 20px', background:'rgba(238,242,255,0.02)', border:'1px dashed rgba(238,242,255,0.1)', borderRadius:'16px' },
-  emptyIcon: { fontSize:'40px', marginBottom:'16px', color:'var(--gold)', opacity:0.5 },
-  emptyTitle: { fontFamily:'var(--FH)', fontSize:'18px', color:'var(--w8)', margin:'0 0 8px' },
-  emptyDesc: { color:'var(--w3)', fontSize:'14px', margin:'0 0 24px' },
-  emptyBtn: { background:'linear-gradient(135deg, var(--gold) 0%, var(--gold-hi) 100%)', border:'none', borderRadius:'10px', padding:'12px 28px', color:'#000', fontSize:'14px', fontWeight:'700', fontFamily:'var(--FB)', cursor:'pointer' },
+  resetLine: { fontSize:'12px',color:C3,margin:'-16px 0 0',textAlign:'center' },
 
-  historyList: { display:'flex', flexDirection:'column', gap:'12px' },
-  historyCard: { background:'rgba(238,242,255,0.03)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'14px', padding:'20px', transition:'border-color 0.2s', cursor:'default' },
-  historyTop: { display:'flex', gap:'10px', alignItems:'center', marginBottom:'10px', flexWrap:'wrap' },
-  historyPlatform: { background:'rgba(12,170,220,0.1)', borderRadius:'6px', padding:'4px 10px', color:'var(--blue-hi)', fontSize:'11px', fontWeight:'700' },
-  historyType: { background:'rgba(238,242,255,0.06)', borderRadius:'6px', padding:'4px 10px', color:'var(--w5)', fontSize:'11px' },
-  historyDate: { color:'var(--w3)', fontSize:'11px', marginLeft:'auto', fontFamily:'var(--FM)' },
-  historyNiche: { color:'var(--w8)', fontSize:'14px', fontWeight:'600', margin:'0 0 6px' },
-  historyTopic: { color:'var(--gold)', fontSize:'13px', margin:'0 0 6px', lineHeight:'1.4' },
-  historyHook: { color:'var(--w3)', fontSize:'12px', fontStyle:'italic', margin:0, lineHeight:'1.5', borderLeft:'2px solid rgba(233,161,0,0.3)', paddingLeft:'10px' },
+  upgradeBanner:{ background:'rgba(212,168,71,0.06)',border:`1px solid rgba(212,168,71,0.2)`,borderRadius:'10px',padding:'20px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'20px',flexWrap:'wrap' },
+  upgradeTitle: { fontSize:'14px',fontWeight:'700',color:C1,margin:'0 0 4px' },
+  upgradeSub:   { fontSize:'13px',color:C2,margin:0 },
+  upgradeBtn:   { background:CA,border:'none',borderRadius:'7px',padding:'10px 20px',color:'#000',fontSize:'13px',fontWeight:'700',fontFamily:'var(--FH)',cursor:'pointer',flexShrink:0 },
+
+  section:   { display:'flex',flexDirection:'column',gap:'0' },
+  sectionHead:{ display:'flex',alignItems:'center',gap:'10px',marginBottom:'14px' },
+  sectionTitle:{ fontSize:'13px',fontWeight:'700',color:C1,letterSpacing:'-0.01em' },
+  badge:     { background:'rgba(255,255,255,0.06)',borderRadius:'20px',padding:'2px 9px',color:C3,fontSize:'11px',fontWeight:'600' },
+
+  empty:     { border:`1px dashed rgba(255,255,255,0.08)`,borderRadius:'10px',padding:'56px 20px',textAlign:'center' },
+  emptyIcon: { fontSize:'28px',color:CA,opacity:0.3,margin:'0 0 14px' },
+  emptyTitle:{ fontFamily:'var(--FH)',fontSize:'16px',color:C2,margin:'0 0 6px' },
+  emptySub:  { fontSize:'13px',color:C3,margin:'0 0 20px',lineHeight:'1.6' },
+  emptyBtn:  { background:CA,border:'none',borderRadius:'7px',padding:'10px 22px',color:'#000',fontSize:'13px',fontWeight:'700',fontFamily:'var(--FH)',cursor:'pointer' },
+
+  tableWrap: { border:`1px solid ${CB}`,borderRadius:'10px',overflow:'hidden' },
+  tableHead: { display:'grid',gridTemplateColumns:'1fr 120px 100px 80px',padding:'10px 20px',borderBottom:`1px solid ${CB}`,background:'rgba(255,255,255,0.02)' },
+  tableBody: { display:'flex',flexDirection:'column' },
+  tableRow:  { display:'grid',gridTemplateColumns:'1fr 120px 100px 80px',padding:'13px 20px',borderBottom:`1px solid ${CB}`,transition:'background 0.15s' },
+  col:       { display:'flex',alignItems:'center',paddingRight:'12px' },
+  colNiche:  { gridColumn:'1',minWidth:0 },
+  colPlatform:{ gridColumn:'2' },
+  colType:   { gridColumn:'3' },
+  colDate:   { gridColumn:'4' },
+  platTag:   { background:'rgba(56,189,248,0.07)',border:'1px solid rgba(56,189,248,0.12)',borderRadius:'4px',padding:'3px 8px',color:'rgba(56,189,248,0.7)',fontSize:'11px',fontWeight:'600',whiteSpace:'nowrap' },
+
+  planSection:{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'16px' },
+  planCard:  { border:`1px solid ${CB}`,borderRadius:'10px',padding:'20px',background:'rgba(255,255,255,0.02)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'16px' },
+  planLabel: { fontSize:'11px',color:C3,textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:'600',margin:'0 0 4px' },
+  planName:  { fontFamily:'var(--FH)',fontSize:'20px',fontWeight:'800',color:CA,margin:0 },
+  planUpgradeBtn:{ background:'transparent',border:`1px solid ${CB}`,borderRadius:'6px',padding:'7px 14px',color:C2,fontSize:'12px',cursor:'pointer',fontFamily:'var(--FB)' },
+  featureGrid:{ border:`1px solid ${CB}`,borderRadius:'10px',padding:'6px 0',background:'rgba(255,255,255,0.02)' },
+  featureRow:{ display:'flex',alignItems:'center',gap:'10px',padding:'10px 18px',borderBottom:`1px solid rgba(255,255,255,0.04)` },
+  featureDot:{ width:'6px',height:'6px',borderRadius:'50%',flexShrink:0,transition:'background 0.3s' },
 };

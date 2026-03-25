@@ -2,21 +2,28 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// ─── Tab definitions ──────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'script',    label: '📝 Script' },
-  { id: 'scenes',    label: '🎬 Scenes' },
-  { id: 'hook',      label: '🧠 Hook Psychology' },
-  { id: 'youtube',   label: '▶ YouTube SEO' },
-  { id: 'social',    label: '📱 Social' },
-  { id: 'plan',      label: '📅 7-Day Plan' },
+  { id:'script',  label:'Script'         },
+  { id:'scenes',  label:'Scenes'         },
+  { id:'hook',    label:'Hook Psychology'},
+  { id:'youtube', label:'YouTube'        },
+  { id:'social',  label:'Social'         },
+  { id:'plan',    label:'7-Day Plan'     },
 ];
+
+// ── Color tokens ──────────────────────────────────────────────────────────────
+const CA = '#D4A847';
+const C1 = '#EEEEF5';
+const C2 = 'rgba(238,238,245,0.55)';
+const C3 = 'rgba(238,238,245,0.28)';
+const CB = 'rgba(255,255,255,0.07)';
+const CB2= 'rgba(255,255,255,0.12)';
 
 export default function ResultsPage() {
   const router = useRouter();
-  const [result,  setResult]  = useState(null);
-  const [tab,     setTab]     = useState('script');
-  const [copied,  setCopied]  = useState('');
+  const [result, setResult] = useState(null);
+  const [tab,    setTab]    = useState('script');
+  const [copied, setCopied] = useState('');
 
   useEffect(() => {
     const raw = sessionStorage.getItem('studioai_result');
@@ -32,51 +39,53 @@ export default function ResultsPage() {
   }
 
   if (!result) return (
-    <div style={styles.splash}>
-      <div style={styles.spinner} />
+    <div style={{minHeight:'100vh',background:'#07070E',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <Spinner />
     </div>
   );
 
   const { research, creator, publisher, meta, input } = result;
+  const totalSec = ((meta?.total_duration_ms || 0) / 1000).toFixed(1);
 
   return (
-    <div style={styles.page}>
-      {/* BG */}
-      <div style={{...styles.blob, top:'-10%', left:'-5%',  background:'radial-gradient(circle, rgba(233,161,0,0.08) 0%, transparent 60%)'}}/>
-      <div style={{...styles.blob, bottom:'-10%', right:'-5%', background:'radial-gradient(circle, rgba(12,170,220,0.07) 0%, transparent 60%)'}}/>
+    <div style={P.root}>
 
-      {/* Nav */}
-      <nav style={styles.nav}>
-        <div style={styles.navLogo}>
-          <span style={{color:'var(--gold)',fontSize:'20px'}}>⬡</span>
-          <span style={styles.navLogoText}>Studio AI</span>
+      {/* ── Topbar ── */}
+      <header style={P.topbar}>
+        <div style={P.tbLeft}>
+          <HexLogo />
+          <span style={P.brand}>Studio AI</span>
+          <span style={P.sep}>/</span>
+          <span style={P.crumb}>Results</span>
         </div>
-        <div style={styles.navRight}>
-          {meta?.streak > 1 && <span style={styles.streak}>🔥 {meta.streak} day streak</span>}
-          <span style={styles.timePill}>Generated in {((meta?.total_duration_ms||0)/1000).toFixed(1)}s</span>
-          <button style={styles.newBtn} onClick={() => router.push('/generate')}>+ New</button>
+        <div style={P.tbRight}>
+          {meta?.streak > 1 && <span style={P.streak}>🔥 {meta.streak}-day streak</span>}
+          <span style={P.timePill}>{totalSec}s</span>
+          <button style={P.newBtn} onClick={() => router.push('/generate')}>+ New generation</button>
         </div>
-      </nav>
+      </header>
 
-      {/* Topic banner */}
-      <div style={styles.topicBanner}>
-        <div style={styles.topicInner}>
-          <p style={styles.topicLabel}>Generated Content Pack</p>
-          <h1 style={styles.topicTitle}>{research?.chosen_topic}</h1>
-          <div style={styles.topicMeta}>
-            <span style={styles.metaTag}>{input?.platform}</span>
-            <span style={styles.metaTag}>{input?.language}</span>
-            <span style={styles.metaTag}>{input?.tone}</span>
+      {/* ── Topic banner ── */}
+      <div style={P.banner}>
+        <div style={P.bannerInner}>
+          <div style={P.metaRow}>
+            <Tag label={input?.platform} />
+            <Tag label={input?.language} />
+            <Tag label={input?.tone} />
           </div>
+          <h1 style={P.bannerTitle}>{research?.chosen_topic}</h1>
+          {research?.chosen_hook && (
+            <p style={P.bannerHook}>"{research.chosen_hook}"</p>
+          )}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={styles.tabBar}>
-        <div style={styles.tabBarInner}>
+      {/* ── Tab bar ── */}
+      <div style={P.tabStrip}>
+        <div style={P.tabStripInner}>
           {TABS.map(t => (
             <button key={t.id}
-              style={{...styles.tabBtn, ...(tab === t.id ? styles.tabBtnActive : {})}}
+              style={{...P.tabBtn, ...(tab===t.id ? P.tabActive : {})}}
               onClick={() => setTab(t.id)}>
               {t.label}
             </button>
@@ -84,109 +93,83 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div style={styles.content}>
-        {tab === 'script'  && <ScriptTab  creator={creator}  copy={copy} copied={copied}/>}
-        {tab === 'scenes'  && <ScenesTab  creator={creator}  copy={copy} copied={copied}/>}
-        {tab === 'hook'    && <HookTab    research={research} creator={creator}/>}
-        {tab === 'youtube' && <YouTubeTab publisher={publisher} copy={copy} copied={copied}/>}
-        {tab === 'social'  && <SocialTab  publisher={publisher} copy={copy} copied={copied}/>}
-        {tab === 'plan'    && <PlanTab    publisher={publisher}/>}
+      {/* ── Content ── */}
+      <div style={P.body}>
+        <div style={P.bodyInner}>
+          {tab === 'script'  && <ScriptTab  creator={creator}  copy={copy} copied={copied} />}
+          {tab === 'scenes'  && <ScenesTab  creator={creator} />}
+          {tab === 'hook'    && <HookTab    research={research} creator={creator} />}
+          {tab === 'youtube' && <YouTubeTab publisher={publisher} copy={copy} copied={copied} />}
+          {tab === 'social'  && <SocialTab  publisher={publisher} copy={copy} copied={copied} />}
+          {tab === 'plan'    && <PlanTab    publisher={publisher} />}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Script Tab ───────────────────────────────────────────────────────────────
+// ── Script Tab ────────────────────────────────────────────────────────────────
 function ScriptTab({ creator, copy, copied }) {
-  if (!creator) return <EmptyState msg="Script data not available" />;
+  if (!creator) return <Empty msg="Script data unavailable" />;
   return (
-    <div style={styles.tabContent}>
-      <div style={styles.statsRow}>
-        <StatCard label="Word Count"       value={creator.word_count || '—'} />
-        <StatCard label="Est. Duration"    value={creator.estimated_duration || '—'} />
-        <StatCard label="Scenes"           value={creator.scenes?.length || '—'} />
-        <StatCard label="Pattern Interrupts" value={creator.pattern_interrupts?.length || '—'} />
+    <div style={L.stack}>
+      <div style={L.statRow}>
+        <Stat n={creator.word_count || '—'} label="Words" />
+        <Stat n={creator.estimated_duration || '—'} label="Duration" />
+        <Stat n={creator.scenes?.length || '—'} label="Scenes" />
+        <Stat n={creator.pattern_interrupts?.length || '—'} label="Pattern Interrupts" />
       </div>
 
-      <Section title="Full Script" action={<CopyBtn id="full_script" copied={copied} onCopy={() => copy(creator.full_script, 'full_script')} />}>
-        <pre style={styles.scriptPre}>{creator.full_script}</pre>
-      </Section>
+      <Block title="Full Script" action={<CopyBtn id="full" copied={copied} onCopy={() => copy(creator.full_script,'full')} />}>
+        <pre style={L.scriptPre}>{creator.full_script}</pre>
+      </Block>
 
       {creator.shorts_script && (
-        <Section title="60-Second Short / Reel Version" action={<CopyBtn id="shorts" copied={copied} onCopy={() => copy(creator.shorts_script, 'shorts')} />}>
-          <pre style={styles.scriptPre}>{creator.shorts_script}</pre>
-        </Section>
+        <Block title="60-Second Short / Reel Version" action={<CopyBtn id="short" copied={copied} onCopy={() => copy(creator.shorts_script,'short')} />}>
+          <pre style={L.scriptPre}>{creator.shorts_script}</pre>
+        </Block>
       )}
 
       {creator.cta_options?.length > 0 && (
-        <Section title="CTA Options">
-          {creator.cta_options.map((cta, i) => (
-            <div key={i} style={styles.ctaCard}>
-              <div style={styles.ctaTop}>
-                <span style={styles.ctaBadge}>{cta.goal}</span>
-                <span style={styles.ctaPlacement}>{cta.placement}</span>
+        <Block title="CTA Options">
+          <div style={L.ctaGrid}>
+            {creator.cta_options.map((c,i) => (
+              <div key={i} style={L.ctaCard}>
+                <div style={{display:'flex',gap:'8px',marginBottom:'10px',alignItems:'center'}}>
+                  <span style={L.goalBadge}>{c.goal}</span>
+                  <span style={{fontSize:'12px',color:C3}}>{c.placement}</span>
+                </div>
+                <p style={L.ctaQuote}>"{c.cta_text}"</p>
+                <p style={L.ctaReason}>{c.why_it_works}</p>
               </div>
-              <p style={styles.ctaText}>"{cta.cta_text}"</p>
-              <p style={styles.ctaWhy}>{cta.why_it_works}</p>
-            </div>
-          ))}
-        </Section>
+            ))}
+          </div>
+        </Block>
       )}
     </div>
   );
 }
 
-// ─── Scenes Tab ───────────────────────────────────────────────────────────────
-function ScenesTab({ creator, copy, copied }) {
-  if (!creator?.scenes?.length) return <EmptyState msg="Scene data not available" />;
+// ── Scenes Tab ────────────────────────────────────────────────────────────────
+function ScenesTab({ creator }) {
+  if (!creator?.scenes?.length) return <Empty msg="Scene data unavailable" />;
   return (
-    <div style={styles.tabContent}>
-      <p style={styles.sectionDesc}>Each scene is a complete filming brief. Use visual_direction for B-roll, overlay_text for on-screen graphics.</p>
+    <div style={L.stack}>
+      <p style={{fontSize:'13px',color:C2,margin:0,lineHeight:'1.6'}}>Each row is a complete production brief. Use b_roll_search_term on Pexels or Shutterstock.</p>
       {creator.scenes.map((scene, i) => (
-        <div key={i} style={styles.sceneCard}>
-          <div style={styles.sceneHeader}>
-            <span style={styles.sceneNum}>Scene {scene.scene_number}</span>
-            <span style={styles.sceneType}>{scene.section_type}</span>
-            <span style={styles.sceneTime}>{scene.timestamp_start} – {scene.timestamp_end}</span>
+        <div key={i} style={L.sceneCard}>
+          <div style={L.sceneHead}>
+            <span style={L.sceneNum}>Scene {scene.scene_number}</span>
+            <span style={L.sceneType}>{scene.section_type}</span>
+            <span style={{fontSize:'11px',color:C3,fontFamily:'var(--FM)'}}>{scene.timestamp_start} – {scene.timestamp_end}</span>
           </div>
-          <div style={styles.sceneGrid}>
-            <div style={styles.sceneVoiceover}>
-              <p style={styles.sceneFieldLabel}>🎙 Voiceover</p>
-              <p style={styles.sceneFieldVal}>{scene.voiceover}</p>
-            </div>
-            <div style={styles.sceneDetails}>
-              {scene.visual_direction && (
-                <div style={styles.sceneDetail}>
-                  <span style={styles.sceneDetailLabel}>🎥 Visual</span>
-                  <span style={styles.sceneDetailVal}>{scene.visual_direction}</span>
-                </div>
-              )}
-              {scene.overlay_text && (
-                <div style={styles.sceneDetail}>
-                  <span style={styles.sceneDetailLabel}>📝 Overlay</span>
-                  <span style={styles.sceneDetailVal}>{scene.overlay_text}</span>
-                </div>
-              )}
-              {scene.b_roll_search_term && (
-                <div style={styles.sceneDetail}>
-                  <span style={styles.sceneDetailLabel}>🔍 B-Roll</span>
-                  <span style={{...styles.sceneDetailVal, color:'var(--blue-hi)'}}>{scene.b_roll_search_term}</span>
-                </div>
-              )}
-              {scene.tone_direction && (
-                <div style={styles.sceneDetail}>
-                  <span style={styles.sceneDetailLabel}>🎭 Tone</span>
-                  <span style={styles.sceneDetailVal}>{scene.tone_direction}</span>
-                </div>
-              )}
-              {scene.retention_technique && (
-                <div style={styles.sceneDetail}>
-                  <span style={styles.sceneDetailLabel}>⚡ Retention</span>
-                  <span style={{...styles.sceneDetailVal, color:'var(--gold)'}}>{scene.retention_technique}</span>
-                </div>
-              )}
-            </div>
+          <p style={L.sceneVo}>{scene.voiceover}</p>
+          <div style={L.sceneFields}>
+            {scene.visual_direction  && <SceneField icon="🎥" label="Visual"    val={scene.visual_direction} />}
+            {scene.overlay_text      && <SceneField icon="📝" label="Overlay"   val={scene.overlay_text} />}
+            {scene.b_roll_search_term&& <SceneField icon="🔍" label="B-Roll"    val={scene.b_roll_search_term} accent />}
+            {scene.tone_direction    && <SceneField icon="🎭" label="Tone"      val={scene.tone_direction} />}
+            {scene.retention_technique&&<SceneField icon="⚡" label="Retention" val={scene.retention_technique} gold />}
           </div>
         </div>
       ))}
@@ -194,251 +177,267 @@ function ScenesTab({ creator, copy, copied }) {
   );
 }
 
-// ─── Hook Psychology Tab ──────────────────────────────────────────────────────
+// ── Hook Psychology Tab ───────────────────────────────────────────────────────
 function HookTab({ research, creator }) {
   return (
-    <div style={styles.tabContent}>
-      {/* Chosen hook */}
-      <div style={styles.hookHero}>
-        <p style={styles.hookHeroLabel}>Chosen Hook</p>
-        <p style={styles.hookHeroText}>"{research?.chosen_hook}"</p>
-        <span style={styles.triggerBadge}>{research?.chosen_hook_trigger}</span>
+    <div style={L.stack}>
+      <div style={L.hookHero}>
+        <p style={L.hookHeroLabel}>Chosen Hook</p>
+        <p style={L.hookHeroText}>"{research?.chosen_hook}"</p>
+        <span style={L.triggerTag}>{research?.chosen_hook_trigger}</span>
       </div>
 
       {research?.chosen_hook_deep_analysis && (
-        <Section title="Deep Psychology Analysis">
-          <p style={styles.analysisText}>{research.chosen_hook_deep_analysis}</p>
-        </Section>
+        <Block title="Deep Psychology Analysis">
+          <p style={{fontSize:'14px',color:C2,lineHeight:'1.75',margin:0}}>{research.chosen_hook_deep_analysis}</p>
+        </Block>
       )}
 
       {creator?.hook_breakdown && (
-        <Section title="Hook Execution Breakdown">
-          {[
-            ['Psychological Mechanism',  creator.hook_breakdown.psychological_mechanism],
-            ['Why It Works in 3 Seconds', creator.hook_breakdown.why_first_3_seconds],
-            ["Viewer's Internal Monologue", creator.hook_breakdown.what_viewer_is_thinking],
-            ['What Happens If It Fails',  creator.hook_breakdown.what_happens_if_hook_fails],
-          ].map(([label, val]) => val && (
-            <div key={label} style={styles.breakdownRow}>
-              <p style={styles.breakdownLabel}>{label}</p>
-              <p style={styles.breakdownVal}>{val}</p>
-            </div>
-          ))}
-        </Section>
+        <Block title="Hook Execution Breakdown">
+          <div style={L.breakdownList}>
+            {[
+              ['Psychological Mechanism',    creator.hook_breakdown.psychological_mechanism],
+              ['Why It Works in 3 Seconds',  creator.hook_breakdown.why_first_3_seconds],
+              ["Viewer's Internal Monologue", creator.hook_breakdown.what_viewer_is_thinking],
+              ['What Happens If It Fails',   creator.hook_breakdown.what_happens_if_hook_fails],
+            ].filter(([,v]) => v).map(([lbl,val]) => (
+              <div key={lbl} style={L.breakdownRow}>
+                <p style={L.breakdownLbl}>{lbl}</p>
+                <p style={L.breakdownVal}>{val}</p>
+              </div>
+            ))}
+          </div>
+        </Block>
       )}
 
       {research?.hook_options?.length > 0 && (
-        <Section title="All Hook Options Considered">
-          {research.hook_options.map((h, i) => (
-            <div key={i} style={styles.hookOptionCard}>
-              <div style={styles.hookOptionTop}>
-                <span style={styles.triggerBadge}>{h.psychological_trigger}</span>
-                <span style={{...styles.ctrBadge, background: h.ctr_strength === 'HIGH' ? 'rgba(0,220,130,0.15)' : 'rgba(233,161,0,0.12)', color: h.ctr_strength === 'HIGH' ? '#00dc82' : 'var(--gold)'}}>
-                  CTR: {h.ctr_strength}
-                </span>
+        <Block title="All Hook Options">
+          <div style={L.hookGrid}>
+            {research.hook_options.map((h,i) => (
+              <div key={i} style={L.hookCard}>
+                <div style={{display:'flex',gap:'8px',marginBottom:'10px',alignItems:'center',flexWrap:'wrap'}}>
+                  <span style={L.triggerTag}>{h.psychological_trigger}</span>
+                  <span style={{...L.ctrTag, background: h.ctr_strength==='HIGH'?'rgba(62,207,142,0.1)':'rgba(212,168,71,0.1)', color: h.ctr_strength==='HIGH'?'#3ECF8E':CA}}>
+                    CTR {h.ctr_strength}
+                  </span>
+                </div>
+                <p style={{fontSize:'14px',color:C1,fontWeight:'500',margin:'0 0 8px',lineHeight:'1.5'}}>"{h.hook_text}"</p>
+                <p style={{fontSize:'13px',color:C2,margin:0,lineHeight:'1.6'}}>{h.trigger_explanation}</p>
+                {h.risk_factor && <p style={{fontSize:'12px',color:'#F87171',marginTop:'8px',marginBottom:0}}>⚠ {h.risk_factor}</p>}
               </div>
-              <p style={styles.hookOptionText}>"{h.hook_text}"</p>
-              <p style={styles.hookOptionExplain}>{h.trigger_explanation}</p>
-              {h.risk_factor && <p style={styles.hookRisk}>⚠ {h.risk_factor}</p>}
-            </div>
-          ))}
-        </Section>
+            ))}
+          </div>
+        </Block>
       )}
 
       {creator?.pattern_interrupts?.length > 0 && (
-        <Section title="Pattern Interrupts in Script">
-          {creator.pattern_interrupts.map((p, i) => (
-            <div key={i} style={styles.patternRow}>
-              <span style={styles.patternTime}>{p.timestamp}</span>
-              <span style={styles.patternTech}>{p.technique}</span>
-              <span style={styles.patternLine}>"{p.script_line}"</span>
-            </div>
-          ))}
-        </Section>
+        <Block title="Pattern Interrupts">
+          <table style={L.piTable}>
+            <thead>
+              <tr>
+                {['Timestamp','Technique','Script Line'].map(h => (
+                  <th key={h} style={L.piTh}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {creator.pattern_interrupts.map((p,i) => (
+                <tr key={i} style={{borderBottom:`1px solid ${CB}`}}>
+                  <td style={L.piTd}><span style={{fontFamily:'var(--FM)',fontSize:'12px',color:CA}}>{p.timestamp}</span></td>
+                  <td style={L.piTd}><span style={{fontSize:'12px',color:C1,fontWeight:'500'}}>{p.technique}</span></td>
+                  <td style={{...L.piTd,color:C2,fontSize:'13px'}}>"{p.script_line}"</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Block>
       )}
     </div>
   );
 }
 
-// ─── YouTube Tab ──────────────────────────────────────────────────────────────
+// ── YouTube Tab ───────────────────────────────────────────────────────────────
 function YouTubeTab({ publisher, copy, copied }) {
   const yt = publisher?.youtube;
-  if (!yt) return <EmptyState msg="YouTube data not available" />;
+  if (!yt) return <Empty msg="YouTube data unavailable" />;
   return (
-    <div style={styles.tabContent}>
-      {/* Recommended Title */}
-      <div style={styles.recTitle}>
-        <p style={styles.recTitleLabel}>✅ Recommended Title</p>
-        <p style={styles.recTitleText}>{yt.recommended_title}</p>
-        <CopyBtn id="yt_title" copied={copied} onCopy={() => copy(yt.recommended_title, 'yt_title')} />
-      </div>
-
-      {/* Title options */}
-      {yt.title_options?.length > 0 && (
-        <Section title="All Title Options">
-          {yt.title_options.map((t, i) => (
-            <div key={i} style={styles.titleOptionCard}>
-              <div style={styles.titleOptionTop}>
-                <span style={{...styles.ctrBadge, background: t.ctr_prediction === 'HIGH' ? 'rgba(0,220,130,0.15)' : 'rgba(233,161,0,0.12)', color: t.ctr_prediction === 'HIGH' ? '#00dc82' : 'var(--gold)'}}>
-                  CTR: {t.ctr_prediction}
-                </span>
-                <span style={styles.charCount}>{t.character_count || t.title?.length} chars</span>
-                <span style={styles.titleStrategy}>{t.primary_strategy}</span>
-              </div>
-              <p style={styles.titleText}>{t.title}</p>
-              <p style={styles.titleReason}>{t.reasoning}</p>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {/* Description */}
-      <Section title="YouTube Description" action={<CopyBtn id="yt_desc" copied={copied} onCopy={() => copy(yt.description, 'yt_desc')} />}>
-        <pre style={styles.descPre}>{yt.description}</pre>
-      </Section>
-
-      {/* Keywords */}
-      <Section title="SEO Keywords">
-        <div style={styles.keywordRow}>
-          <span style={styles.primaryKw}>{yt.primary_keyword}</span>
-          {yt.secondary_keywords?.map(kw => (
-            <span key={kw} style={styles.secKw}>{kw}</span>
-          ))}
+    <div style={L.stack}>
+      <div style={L.recTitle}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}}>
+          <span style={L.recTitleLabel}>Recommended Title</span>
+          <CopyBtn id="yt_title" copied={copied} onCopy={() => copy(yt.recommended_title,'yt_title')} />
         </div>
-      </Section>
+        <p style={L.recTitleText}>{yt.recommended_title}</p>
+      </div>
 
-      {/* Tags */}
-      {yt.tags?.length > 0 && (
-        <Section title="Tags" action={<CopyBtn id="yt_tags" copied={copied} onCopy={() => copy(yt.tags.join(', '), 'yt_tags')} />}>
-          <div style={styles.tagsWrap}>
-            {yt.tags.map((tag, i) => <span key={i} style={styles.tag}>{tag}</span>)}
+      {yt.title_options?.length > 0 && (
+        <Block title="All Title Variants">
+          <div style={L.stack}>
+            {yt.title_options.map((t,i) => (
+              <div key={i} style={L.titleRow}>
+                <div style={{display:'flex',gap:'8px',marginBottom:'6px',alignItems:'center',flexWrap:'wrap'}}>
+                  <span style={{...L.ctrTag, background:t.ctr_prediction==='HIGH'?'rgba(62,207,142,0.1)':'rgba(212,168,71,0.1)', color:t.ctr_prediction==='HIGH'?'#3ECF8E':CA}}>
+                    CTR {t.ctr_prediction}
+                  </span>
+                  <span style={{fontSize:'11px',color:C3,fontFamily:'var(--FM)'}}>{t.character_count||t.title?.length} chars</span>
+                  <span style={{fontSize:'11px',color:'rgba(12,170,220,0.8)',textTransform:'uppercase',letterSpacing:'0.05em',fontWeight:'600'}}>{t.primary_strategy}</span>
+                </div>
+                <p style={{fontSize:'14px',color:C1,fontWeight:'500',margin:'0 0 6px'}}>{t.title}</p>
+                <p style={{fontSize:'12px',color:C3,margin:0,lineHeight:'1.5'}}>{t.reasoning}</p>
+              </div>
+            ))}
           </div>
-        </Section>
+        </Block>
       )}
 
-      {/* Cards & End screen */}
-      <div style={styles.twoCol}>
-        {yt.end_screen_recommendation && (
-          <Section title="End Screen">
-            <p style={styles.bodyText}>{yt.end_screen_recommendation}</p>
-          </Section>
-        )}
-        {yt.card_recommendation && (
-          <Section title="Cards">
-            <p style={styles.bodyText}>{yt.card_recommendation}</p>
-          </Section>
-        )}
+      <Block title="Description" action={<CopyBtn id="yt_desc" copied={copied} onCopy={() => copy(yt.description,'yt_desc')} />}>
+        <pre style={L.descPre}>{yt.description}</pre>
+      </Block>
+
+      <div style={L.colGrid}>
+        <Block title="Primary Keyword">
+          <span style={L.primaryKw}>{yt.primary_keyword}</span>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px',marginTop:'10px'}}>
+            {yt.secondary_keywords?.map((k,i) => <span key={i} style={L.secKw}>{k}</span>)}
+          </div>
+        </Block>
+        <Block title="Category & Cards">
+          <p style={{fontSize:'13px',color:C2,margin:'0 0 10px'}}><strong style={{color:C1}}>Category:</strong> {yt.category_suggestion}</p>
+          {yt.card_recommendation && <p style={{fontSize:'13px',color:C2,margin:0}}>{yt.card_recommendation}</p>}
+        </Block>
       </div>
+
+      {yt.tags?.length > 0 && (
+        <Block title="Tags" action={<CopyBtn id="yt_tags" copied={copied} onCopy={() => copy(yt.tags.join(', '),'yt_tags')} />}>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
+            {yt.tags.map((tag,i) => <span key={i} style={L.tag}>{tag}</span>)}
+          </div>
+        </Block>
+      )}
+
+      {yt.end_screen_recommendation && (
+        <Block title="End Screen Strategy">
+          <p style={{fontSize:'14px',color:C2,lineHeight:'1.7',margin:0}}>{yt.end_screen_recommendation}</p>
+        </Block>
+      )}
     </div>
   );
 }
 
-// ─── Social Tab ───────────────────────────────────────────────────────────────
+// ── Social Tab ────────────────────────────────────────────────────────────────
 function SocialTab({ publisher, copy, copied }) {
-  const ig  = publisher?.instagram;
-  const tt  = publisher?.tiktok;
-  const blog= publisher?.blog;
+  const ig   = publisher?.instagram;
+  const tt   = publisher?.tiktok;
+  const blog = publisher?.blog;
+  const repr = publisher?.cross_platform_repurpose;
+
   return (
-    <div style={styles.tabContent}>
+    <div style={L.stack}>
       {ig && (
-        <Section title="Instagram" action={<CopyBtn id="ig_caption" copied={copied} onCopy={() => copy(ig.caption + '\n\n' + ig.hashtags?.map(h => `#${h.replace(/^#/,'')}`).join(' '), 'ig_caption')} />}>
-          <pre style={styles.captionPre}>{ig.caption}</pre>
-          <div style={styles.hashtagsWrap}>
-            {ig.hashtags?.map((h, i) => <span key={i} style={styles.hashtag}>#{h.replace(/^#/,'')}</span>)}
+        <Block title="Instagram" action={<CopyBtn id="ig" copied={copied} onCopy={() => copy(ig.caption + '\n\n' + (ig.hashtags||[]).map(h=>`#${h.replace(/^#/,'')}`).join(' '),'ig')} />}>
+          <pre style={L.descPre}>{ig.caption}</pre>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'5px',marginTop:'14px'}}>
+            {ig.hashtags?.map((h,i) => <span key={i} style={L.hashTag}>#{h.replace(/^#/,'')}</span>)}
           </div>
-          {ig.reel_cover_text && <p style={styles.igMeta}>Cover text: <strong style={{color:'var(--white)'}}>{ig.reel_cover_text}</strong></p>}
-          {ig.save_cta && <p style={styles.igMeta}>Save CTA: <strong style={{color:'var(--gold)'}}>{ig.save_cta}</strong></p>}
-        </Section>
+          <div style={{display:'flex',gap:'24px',marginTop:'14px',flexWrap:'wrap'}}>
+            {ig.reel_cover_text && <KV k="Cover text" v={ig.reel_cover_text} />}
+            {ig.save_cta        && <KV k="Save CTA"   v={ig.save_cta} gold />}
+          </div>
+        </Block>
       )}
 
       {tt && (
-        <Section title="TikTok" action={<CopyBtn id="tt_caption" copied={copied} onCopy={() => copy(tt.caption + ' ' + tt.hashtags?.join(' '), 'tt_caption')} />}>
-          <p style={styles.bodyText}>{tt.caption}</p>
-          <div style={styles.hashtagsWrap}>
-            {tt.hashtags?.map((h, i) => <span key={i} style={styles.hashtag}>{h.startsWith('#') ? h : `#${h}`}</span>)}
+        <Block title="TikTok" action={<CopyBtn id="tt" copied={copied} onCopy={() => copy(tt.caption+' '+(tt.hashtags||[]).join(' '),'tt')} />}>
+          <p style={{fontSize:'15px',color:C1,fontWeight:'500',margin:'0 0 12px',lineHeight:'1.5'}}>{tt.caption}</p>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'5px',marginBottom:'14px'}}>
+            {tt.hashtags?.map((h,i) => <span key={i} style={L.hashTag}>{h.startsWith('#')?h:`#${h}`}</span>)}
           </div>
-          {tt.first_frame_text && <p style={styles.igMeta}>First frame: <strong style={{color:'var(--white)'}}>{tt.first_frame_text}</strong></p>}
-          {tt.trending_sound_category && <p style={styles.igMeta}>Sound: <strong style={{color:'var(--blue-hi)'}}>{tt.trending_sound_category}</strong></p>}
-          {tt.duet_stitch_suggestion && <p style={styles.igMeta}>Duet/Stitch: <strong style={{color:'var(--w8)'}}>{tt.duet_stitch_suggestion}</strong></p>}
-        </Section>
+          <div style={{display:'flex',gap:'24px',flexWrap:'wrap'}}>
+            {tt.first_frame_text        && <KV k="First frame"  v={tt.first_frame_text} />}
+            {tt.trending_sound_category && <KV k="Sound type"   v={tt.trending_sound_category} />}
+            {tt.duet_stitch_suggestion  && <KV k="Duet/Stitch"  v={tt.duet_stitch_suggestion} />}
+          </div>
+        </Block>
       )}
 
       {blog && (
-        <Section title="Blog / SEO">
-          {[
-            ['SEO Title',        blog.seo_title],
-            ['Meta Description', blog.meta_description],
-            ['URL Slug',         blog.url_slug],
-            ['Primary Keyword',  blog.primary_keyword],
-          ].map(([label, val]) => val && (
-            <div key={label} style={styles.breakdownRow}>
-              <p style={styles.breakdownLabel}>{label}</p>
-              <p style={{...styles.breakdownVal, fontFamily: label === 'URL Slug' ? 'var(--FM)' : 'inherit', color: label === 'URL Slug' ? 'var(--blue-hi)' : 'var(--w8)'}}>{val}</p>
-            </div>
-          ))}
+        <Block title="Blog / SEO">
+          <div style={L.kvTable}>
+            {[['SEO Title',blog.seo_title],['Meta Description',blog.meta_description],['URL Slug',blog.url_slug],['Primary Keyword',blog.primary_keyword]].filter(([,v])=>v).map(([k,v])=>(
+              <div key={k} style={L.kvRow}>
+                <span style={L.kvKey}>{k}</span>
+                <span style={{...L.kvVal, fontFamily: k==='URL Slug'?'var(--FM)':'inherit', color: k==='URL Slug'?'rgba(56,189,248,0.85)':C1}}>{v}</span>
+              </div>
+            ))}
+          </div>
           {blog.suggested_h2_headers?.length > 0 && (
-            <>
-              <p style={{...styles.breakdownLabel, marginTop:'16px'}}>Suggested H2 Headers</p>
-              {blog.suggested_h2_headers.map((h, i) => (
-                <div key={i} style={styles.h2Row}>
-                  <span style={styles.h2Num}>H2</span>
-                  <span style={styles.h2Text}>{h}</span>
-                </div>
-              ))}
-            </>
+            <div style={{marginTop:'16px'}}>
+              <p style={L.miniLabel}>H2 Headers</p>
+              <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+                {blog.suggested_h2_headers.map((h,i) => (
+                  <div key={i} style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
+                    <span style={{background:'rgba(212,168,71,0.12)',borderRadius:'4px',padding:'2px 7px',color:CA,fontSize:'10px',fontWeight:'700',flexShrink:0,marginTop:'2px'}}>H2</span>
+                    <span style={{fontSize:'13px',color:C2,lineHeight:'1.5'}}>{h}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </Section>
+        </Block>
       )}
 
-      {publisher?.cross_platform_repurpose?.length > 0 && (
-        <Section title="Cross-Platform Repurpose Plan">
-          {publisher.cross_platform_repurpose.map((r, i) => (
-            <div key={i} style={styles.repurposeCard}>
-              <div style={styles.repurposeTop}>
-                <span style={styles.repurposePlat}>{r.platform}</span>
-                <span style={styles.repurposeFormat}>{r.format}</span>
+      {repr?.length > 0 && (
+        <Block title="Cross-Platform Repurpose">
+          <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+            {repr.map((r,i) => (
+              <div key={i} style={{padding:'14px',background:'rgba(255,255,255,0.02)',borderRadius:'8px',border:`1px solid ${CB}`}}>
+                <div style={{display:'flex',gap:'8px',marginBottom:'8px',alignItems:'center'}}>
+                  <span style={L.triggerTag}>{r.platform}</span>
+                  <span style={{fontSize:'12px',color:C3}}>{r.format}</span>
+                </div>
+                <p style={{fontSize:'13px',color:C2,margin:0,lineHeight:'1.6'}}>{r.specific_angle}</p>
               </div>
-              <p style={styles.repurposeAngle}>{r.specific_angle}</p>
-            </div>
-          ))}
-        </Section>
+            ))}
+          </div>
+        </Block>
       )}
     </div>
   );
 }
 
-// ─── 7-Day Plan Tab ───────────────────────────────────────────────────────────
+// ── 7-Day Plan Tab ────────────────────────────────────────────────────────────
 function PlanTab({ publisher }) {
-  const plan = publisher?.seven_day_content_plan;
+  const plan     = publisher?.seven_day_content_plan;
   const schedule = publisher?.posting_schedule;
-  if (!plan?.length) return <EmptyState msg="Content plan not available" />;
+  if (!plan?.length) return <Empty msg="Content plan unavailable" />;
 
   return (
-    <div style={styles.tabContent}>
+    <div style={L.stack}>
       {schedule && (
-        <div style={styles.scheduleBox}>
-          <p style={styles.scheduleTitle}>📅 Optimal Posting Schedule</p>
-          <div style={styles.scheduleRow}>
-            <span style={styles.scheduleStat}>{schedule.primary_post_day}</span>
-            <span style={styles.scheduleStat}>{schedule.primary_post_time}</span>
-            {schedule.follow_up_story_timing && <span style={styles.scheduleStat}>Follow-up: {schedule.follow_up_story_timing}</span>}
+        <div style={L.scheduleBox}>
+          <p style={L.miniLabel}>Optimal Posting Schedule</p>
+          <div style={{display:'flex',gap:'10px',flexWrap:'wrap',marginBottom:'10px'}}>
+            {schedule.primary_post_day  && <span style={L.schedStat}>{schedule.primary_post_day}</span>}
+            {schedule.primary_post_time && <span style={L.schedStat}>{schedule.primary_post_time}</span>}
+            {schedule.follow_up_story_timing && <span style={{...L.schedStat, color:C2}}>Follow-up: {schedule.follow_up_story_timing}</span>}
           </div>
-          {schedule.reasoning && <p style={styles.scheduleReason}>{schedule.reasoning}</p>}
+          {schedule.reasoning && <p style={{fontSize:'13px',color:C2,margin:0,lineHeight:'1.6'}}>{schedule.reasoning}</p>}
         </div>
       )}
 
-      <div style={styles.planGrid}>
-        {plan.map((day, i) => (
-          <div key={i} style={styles.dayCard}>
-            <div style={styles.dayHeader}>
-              <span style={styles.dayNum}>Day {day.day}</span>
-              <span style={styles.dayType}>{day.content_type}</span>
+      <div style={L.planGrid}>
+        {plan.map((day,i) => (
+          <div key={i} style={L.dayCard}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}}>
+              <span style={L.dayNum}>Day {day.day}</span>
+              <span style={L.dayType}>{day.content_type}</span>
             </div>
-            <p style={styles.dayTopic}>{day.topic_angle}</p>
-            <div style={styles.dayMeta}>
-              <span style={styles.dayPlatform}>{day.platform}</span>
-              {day.repurpose_from !== 'Original' && (
-                <span style={styles.dayRepurpose}>↻ {day.repurpose_from}</span>
+            <p style={{fontSize:'13px',color:C1,fontWeight:'500',lineHeight:'1.5',margin:'0 0 10px'}}>{day.topic_angle}</p>
+            <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+              <span style={L.dayPlat}>{day.platform}</span>
+              {day.repurpose_from && day.repurpose_from !== 'Original' && (
+                <span style={{fontSize:'11px',color:C3}}>↻ {day.repurpose_from}</span>
               )}
             </div>
           </div>
@@ -448,180 +447,151 @@ function PlanTab({ publisher }) {
   );
 }
 
-// ─── Helper components ────────────────────────────────────────────────────────
-function Section({ title, children, action }) {
+// ── Primitive components ──────────────────────────────────────────────────────
+function Block({ title, children, action }) {
   return (
-    <div style={styles.section}>
-      <div style={styles.sectionHeader}>
-        <h3 style={styles.sectionTitle}>{title}</h3>
+    <div style={L.block}>
+      <div style={L.blockHead}>
+        <span style={L.blockTitle}>{title}</span>
         {action}
       </div>
-      <div style={styles.sectionBody}>{children}</div>
+      <div style={L.blockBody}>{children}</div>
     </div>
   );
 }
-
-function StatCard({ label, value }) {
+function Stat({ n, label }) {
   return (
-    <div style={styles.statCard}>
-      <p style={styles.statVal}>{value}</p>
-      <p style={styles.statLabel}>{label}</p>
+    <div style={L.statCard}>
+      <span style={L.statN}>{n}</span>
+      <span style={L.statLbl}>{label}</span>
     </div>
   );
 }
-
+function Tag({ label }) {
+  return label ? <span style={L.metaTag}>{label}</span> : null;
+}
 function CopyBtn({ id, copied, onCopy }) {
+  const done = copied === id;
   return (
-    <button style={{...styles.copyBtn, ...(copied === id ? styles.copyBtnDone : {})}} onClick={onCopy}>
-      {copied === id ? '✓ Copied' : 'Copy'}
+    <button onClick={onCopy} style={{background:done?'rgba(62,207,142,0.08)':'transparent',border:`1px solid ${done?'rgba(62,207,142,0.25)':CB}`,borderRadius:'5px',padding:'5px 12px',color:done?'#3ECF8E':C3,fontSize:'12px',fontWeight:'600',cursor:'pointer',fontFamily:'var(--FB)',transition:'all 0.2s'}}>
+      {done ? '✓ Copied' : 'Copy'}
     </button>
   );
 }
-
-function EmptyState({ msg }) {
-  return <div style={styles.empty}><p style={styles.emptyMsg}>{msg}</p></div>;
+function Empty({ msg }) {
+  return <div style={{padding:'60px 0',textAlign:'center',color:C3,fontSize:'14px'}}>{msg}</div>;
+}
+function SceneField({ icon, label, val, accent, gold }) {
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:'2px'}}>
+      <span style={{fontSize:'10px',color:C3,textTransform:'uppercase',letterSpacing:'0.08em',fontWeight:'600'}}>{icon} {label}</span>
+      <span style={{fontSize:'12px',color:gold?CA:accent?'rgba(56,189,248,0.8)':C2,lineHeight:'1.5'}}>{val}</span>
+    </div>
+  );
+}
+function KV({ k, v, gold }) {
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:'3px'}}>
+      <span style={{fontSize:'11px',color:C3,textTransform:'uppercase',letterSpacing:'0.07em',fontWeight:'600'}}>{k}</span>
+      <span style={{fontSize:'13px',color:gold?CA:C2,fontWeight:gold?'600':'400'}}>{v}</span>
+    </div>
+  );
+}
+function HexLogo() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+      <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#D4A847" strokeWidth="1.4" fill="none"/>
+      <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#D4A847" fillOpacity="0.12"/>
+    </svg>
+  );
+}
+function Spinner() {
+  return <span style={{width:'24px',height:'24px',borderRadius:'50%',border:'2px solid rgba(255,255,255,0.08)',borderTopColor:CA,display:'block',animation:'spin 0.7s linear infinite'}} />;
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const styles = {
-  splash: { minHeight:'100vh', background:'var(--void)', display:'flex', alignItems:'center', justifyContent:'center' },
-  spinner: { width:'36px', height:'36px', border:'3px solid rgba(233,161,0,0.2)', borderTopColor:'var(--gold)', borderRadius:'50%', animation:'spin 0.8s linear infinite' },
-  page: { minHeight:'100vh', background:'var(--void)', fontFamily:'var(--FB)', position:'relative', overflow:'hidden' },
-  blob: { position:'absolute', width:'700px', height:'700px', borderRadius:'50%', pointerEvents:'none' },
+// ── Page styles ───────────────────────────────────────────────────────────────
+const P = {
+  root:   { minHeight:'100vh', background:'#07070E', fontFamily:'var(--FB)', color:C1, display:'flex', flexDirection:'column' },
+  topbar: { display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 28px',height:'54px',borderBottom:`1px solid ${CB}`,position:'sticky',top:0,zIndex:100,background:'rgba(7,7,14,0.9)',backdropFilter:'blur(12px)',flexShrink:0 },
+  tbLeft: { display:'flex',alignItems:'center',gap:'10px' },
+  brand:  { fontFamily:'var(--FH)',fontSize:'15px',fontWeight:'700',color:C1,letterSpacing:'-0.02em' },
+  sep:    { color:CB2,fontSize:'16px' },
+  crumb:  { fontSize:'14px',color:C2 },
+  tbRight:{ display:'flex',alignItems:'center',gap:'14px' },
+  streak: { fontSize:'12px',color:'rgba(255,140,66,0.9)',background:'rgba(255,100,0,0.08)',border:'1px solid rgba(255,100,0,0.15)',borderRadius:'20px',padding:'4px 12px' },
+  timePill:{ fontSize:'12px',color:C3,fontFamily:'var(--FM)',background:'rgba(255,255,255,0.04)',border:`1px solid ${CB}`,borderRadius:'4px',padding:'4px 10px' },
+  newBtn: { background:CA,border:'none',borderRadius:'6px',padding:'7px 16px',color:'#000',fontSize:'13px',fontWeight:'700',fontFamily:'var(--FH)',cursor:'pointer' },
+  banner: { padding:'36px 28px 24px',borderBottom:`1px solid ${CB}` },
+  bannerInner:{ maxWidth:'860px',margin:'0 auto' },
+  metaRow:    { display:'flex',gap:'6px',marginBottom:'12px',flexWrap:'wrap' },
+  metaTag:    { background:'rgba(255,255,255,0.04)',border:`1px solid ${CB}`,borderRadius:'4px',padding:'4px 10px',color:C3,fontSize:'12px',fontWeight:'500' },
+  bannerTitle:{ fontFamily:'var(--FH)',fontSize:'clamp(18px,2.5vw,28px)',fontWeight:'800',color:C1,margin:'0 0 10px',letterSpacing:'-0.025em',lineHeight:1.25 },
+  bannerHook: { fontSize:'14px',color:C2,margin:0,fontStyle:'italic',lineHeight:'1.6',borderLeft:`2px solid ${CA}`,paddingLeft:'14px' },
+  tabStrip:   { borderBottom:`1px solid ${CB}`,position:'sticky',top:'54px',zIndex:90,background:'rgba(7,7,14,0.92)',backdropFilter:'blur(10px)',flexShrink:0 },
+  tabStripInner:{ maxWidth:'860px',margin:'0 auto',padding:'0 28px',display:'flex',overflowX:'auto' },
+  tabBtn:     { padding:'14px 18px',border:'none',background:'transparent',color:C3,fontSize:'13px',fontWeight:'500',cursor:'pointer',whiteSpace:'nowrap',borderBottom:'2px solid transparent',transition:'all 0.18s',fontFamily:'var(--FB)' },
+  tabActive:  { color:CA, borderBottomColor:CA },
+  body:       { flex:1,overflow:'auto' },
+  bodyInner:  { maxWidth:'860px',margin:'0 auto',padding:'32px 28px 80px' },
+};
 
-  nav: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 40px', borderBottom:'1px solid rgba(238,242,255,0.07)', position:'sticky', top:0, zIndex:100, background:'rgba(0,0,8,0.85)', backdropFilter:'blur(12px)' },
-  navLogo: { display:'flex', alignItems:'center', gap:'10px' },
-  navLogoText: { fontFamily:'var(--FH)', fontSize:'18px', fontWeight:'700', color:'var(--white)', letterSpacing:'-0.02em' },
-  navRight: { display:'flex', alignItems:'center', gap:'12px' },
-  streak: { background:'rgba(255,100,0,0.12)', border:'1px solid rgba(255,100,0,0.25)', borderRadius:'20px', padding:'6px 14px', color:'#ff8c42', fontSize:'12px', fontWeight:'600' },
-  timePill: { background:'rgba(12,170,220,0.12)', border:'1px solid rgba(12,170,220,0.25)', borderRadius:'20px', padding:'6px 14px', color:'var(--blue-hi)', fontSize:'12px', fontFamily:'var(--FM)' },
-  newBtn: { background:'linear-gradient(135deg, var(--gold) 0%, var(--gold-hi) 100%)', border:'none', borderRadius:'8px', padding:'8px 18px', color:'#000', fontSize:'13px', fontWeight:'700', fontFamily:'var(--FB)', cursor:'pointer' },
-
-  topicBanner: { padding:'48px 40px 32px', borderBottom:'1px solid rgba(238,242,255,0.07)', position:'relative', zIndex:1 },
-  topicInner: { maxWidth:'900px', margin:'0 auto' },
-  topicLabel: { color:'var(--gold)', fontSize:'12px', fontWeight:'700', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:'12px', margin:'0 0 12px' },
-  topicTitle: { fontFamily:'var(--FH)', fontSize:'clamp(20px, 3vw, 32px)', fontWeight:'800', color:'var(--white)', margin:'0 0 16px', letterSpacing:'-0.02em', lineHeight:1.2 },
-  topicMeta: { display:'flex', gap:'8px', flexWrap:'wrap' },
-  metaTag: { background:'rgba(238,242,255,0.08)', borderRadius:'6px', padding:'5px 12px', color:'var(--w5)', fontSize:'12px', fontWeight:'500' },
-
-  tabBar: { borderBottom:'1px solid rgba(238,242,255,0.08)', position:'sticky', top:'61px', zIndex:90, background:'rgba(0,0,8,0.9)', backdropFilter:'blur(12px)' },
-  tabBarInner: { maxWidth:'900px', margin:'0 auto', padding:'0 40px', display:'flex', gap:'0', overflowX:'auto' },
-  tabBtn: { padding:'16px 20px', border:'none', background:'transparent', color:'var(--w3)', fontSize:'13px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap', borderBottom:'2px solid transparent', transition:'all 0.2s', fontFamily:'var(--FB)' },
-  tabBtnActive: { color:'var(--gold)', borderBottomColor:'var(--gold)' },
-
-  content: { maxWidth:'900px', margin:'0 auto', padding:'32px 40px 80px', position:'relative', zIndex:1 },
-  tabContent: { display:'flex', flexDirection:'column', gap:'28px' },
-
-  statsRow: { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:'12px' },
-  statCard: { background:'rgba(238,242,255,0.04)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'12px', padding:'20px', textAlign:'center' },
-  statVal: { fontFamily:'var(--FH)', fontSize:'28px', fontWeight:'800', color:'var(--gold)', margin:'0 0 6px' },
-  statLabel: { color:'var(--w3)', fontSize:'12px', margin:0, textTransform:'uppercase', letterSpacing:'0.05em' },
-
-  section: { background:'rgba(238,242,255,0.03)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'14px', overflow:'hidden' },
-  sectionHeader: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 24px', borderBottom:'1px solid rgba(238,242,255,0.06)' },
-  sectionTitle: { fontFamily:'var(--FH)', fontSize:'15px', fontWeight:'700', color:'var(--white)', margin:0 },
-  sectionBody: { padding:'24px' },
-  sectionDesc: { color:'var(--w3)', fontSize:'13px', marginTop:0, marginBottom:'8px' },
-
-  scriptPre: { fontFamily:'var(--FB)', fontSize:'14px', color:'var(--w8)', lineHeight:'1.8', whiteSpace:'pre-wrap', margin:0, wordBreak:'break-word' },
-  descPre:   { fontFamily:'var(--FB)', fontSize:'14px', color:'var(--w8)', lineHeight:'1.7', whiteSpace:'pre-wrap', margin:0 },
-  captionPre:{ fontFamily:'var(--FB)', fontSize:'14px', color:'var(--w8)', lineHeight:'1.7', whiteSpace:'pre-wrap', margin:'0 0 16px' },
-
-  copyBtn: { background:'rgba(238,242,255,0.08)', border:'1px solid rgba(238,242,255,0.15)', borderRadius:'8px', padding:'7px 14px', color:'var(--w5)', fontSize:'12px', fontWeight:'600', cursor:'pointer', fontFamily:'var(--FB)', transition:'all 0.2s' },
-  copyBtnDone: { background:'rgba(0,220,130,0.12)', borderColor:'rgba(0,220,130,0.3)', color:'#00dc82' },
-
-  ctaCard: { background:'rgba(238,242,255,0.04)', borderRadius:'10px', padding:'16px', marginBottom:'12px', border:'1px solid rgba(238,242,255,0.07)' },
-  ctaTop: { display:'flex', gap:'10px', marginBottom:'10px', alignItems:'center' },
-  ctaBadge: { background:'rgba(12,170,220,0.15)', borderRadius:'6px', padding:'4px 10px', color:'var(--blue-hi)', fontSize:'11px', fontWeight:'700', textTransform:'uppercase' },
-  ctaPlacement: { color:'var(--w3)', fontSize:'12px' },
-  ctaText: { fontFamily:'var(--FH)', fontSize:'15px', color:'var(--white)', margin:'0 0 8px' },
-  ctaWhy: { color:'var(--w5)', fontSize:'13px', margin:0, lineHeight:'1.6' },
-
-  sceneCard: { background:'rgba(238,242,255,0.03)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'14px', padding:'24px', marginBottom:'4px' },
-  sceneHeader: { display:'flex', gap:'12px', alignItems:'center', marginBottom:'16px' },
-  sceneNum: { background:'rgba(233,161,0,0.15)', borderRadius:'6px', padding:'4px 12px', color:'var(--gold)', fontSize:'12px', fontWeight:'700' },
-  sceneType: { background:'rgba(238,242,255,0.06)', borderRadius:'6px', padding:'4px 12px', color:'var(--w5)', fontSize:'12px', fontWeight:'600' },
-  sceneTime: { color:'var(--w3)', fontSize:'12px', fontFamily:'var(--FM)' },
-  sceneGrid: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' },
-  sceneVoiceover: { gridColumn:'1' },
-  sceneDetails: { display:'flex', flexDirection:'column', gap:'10px' },
-  sceneFieldLabel: { color:'var(--w3)', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', margin:'0 0 8px' },
-  sceneFieldVal: { color:'var(--w8)', fontSize:'14px', lineHeight:'1.7', margin:0 },
-  sceneDetail: { display:'flex', flexDirection:'column', gap:'3px' },
-  sceneDetailLabel: { color:'var(--w3)', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.06em' },
-  sceneDetailVal: { color:'var(--w5)', fontSize:'13px', lineHeight:'1.5' },
-
-  hookHero: { background:'linear-gradient(135deg, rgba(233,161,0,0.1) 0%, rgba(12,170,220,0.06) 100%)', border:'1px solid rgba(233,161,0,0.2)', borderRadius:'16px', padding:'32px', textAlign:'center' },
-  hookHeroLabel: { color:'var(--gold)', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', margin:'0 0 16px' },
-  hookHeroText: { fontFamily:'var(--FH)', fontSize:'clamp(16px, 2.5vw, 22px)', fontWeight:'700', color:'var(--white)', margin:'0 0 16px', lineHeight:1.4 },
-  triggerBadge: { background:'rgba(233,161,0,0.15)', border:'1px solid rgba(233,161,0,0.3)', borderRadius:'20px', padding:'6px 16px', color:'var(--gold)', fontSize:'12px', fontWeight:'700', letterSpacing:'0.05em' },
-
-  analysisText: { color:'var(--w8)', fontSize:'15px', lineHeight:'1.8', margin:0 },
-  breakdownRow: { marginBottom:'20px', paddingBottom:'20px', borderBottom:'1px solid rgba(238,242,255,0.06)' },
-  breakdownLabel: { color:'var(--gold)', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', margin:'0 0 8px' },
-  breakdownVal: { color:'var(--w8)', fontSize:'14px', lineHeight:'1.7', margin:0 },
-
-  hookOptionCard: { background:'rgba(238,242,255,0.04)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'12px', padding:'20px', marginBottom:'12px' },
-  hookOptionTop: { display:'flex', gap:'10px', marginBottom:'12px', alignItems:'center' },
-  ctrBadge: { borderRadius:'6px', padding:'4px 10px', fontSize:'11px', fontWeight:'700' },
-  hookOptionText: { fontFamily:'var(--FH)', fontSize:'15px', color:'var(--white)', margin:'0 0 10px', lineHeight:1.4 },
-  hookOptionExplain: { color:'var(--w5)', fontSize:'13px', lineHeight:'1.6', margin:0 },
-  hookRisk: { color:'#ff8c42', fontSize:'12px', marginTop:'10px', marginBottom:0 },
-  patternRow: { display:'flex', gap:'12px', alignItems:'flex-start', padding:'12px', borderBottom:'1px solid rgba(238,242,255,0.05)', flexWrap:'wrap' },
-  patternTime: { background:'rgba(238,242,255,0.06)', borderRadius:'4px', padding:'3px 8px', color:'var(--w5)', fontSize:'12px', fontFamily:'var(--FM)', whiteSpace:'nowrap' },
-  patternTech: { background:'rgba(233,161,0,0.1)', borderRadius:'4px', padding:'3px 8px', color:'var(--gold)', fontSize:'12px', fontWeight:'600', whiteSpace:'nowrap' },
-  patternLine: { color:'var(--w8)', fontSize:'13px', flex:1 },
-
-  recTitle: { background:'rgba(233,161,0,0.08)', border:'1px solid rgba(233,161,0,0.2)', borderRadius:'14px', padding:'24px', display:'flex', flexDirection:'column', gap:'12px' },
-  recTitleLabel: { color:'var(--gold)', fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', margin:0 },
-  recTitleText: { fontFamily:'var(--FH)', fontSize:'18px', fontWeight:'800', color:'var(--white)', margin:0 },
-
-  titleOptionCard: { background:'rgba(238,242,255,0.03)', border:'1px solid rgba(238,242,255,0.07)', borderRadius:'10px', padding:'16px', marginBottom:'10px' },
-  titleOptionTop: { display:'flex', gap:'8px', marginBottom:'10px', alignItems:'center', flexWrap:'wrap' },
-  charCount: { color:'var(--w3)', fontSize:'11px', fontFamily:'var(--FM)' },
-  titleStrategy: { color:'var(--blue-hi)', fontSize:'11px', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.05em' },
-  titleText: { fontFamily:'var(--FH)', fontSize:'15px', color:'var(--white)', margin:'0 0 8px' },
-  titleReason: { color:'var(--w5)', fontSize:'12px', lineHeight:'1.6', margin:0 },
-
-  keywordRow: { display:'flex', gap:'8px', flexWrap:'wrap', alignItems:'center' },
-  primaryKw: { background:'rgba(233,161,0,0.15)', border:'1px solid rgba(233,161,0,0.3)', borderRadius:'6px', padding:'6px 14px', color:'var(--gold)', fontSize:'13px', fontWeight:'700' },
-  secKw: { background:'rgba(238,242,255,0.06)', borderRadius:'6px', padding:'6px 12px', color:'var(--w5)', fontSize:'13px' },
-  tagsWrap: { display:'flex', flexWrap:'wrap', gap:'8px' },
-  tag: { background:'rgba(12,170,220,0.1)', border:'1px solid rgba(12,170,220,0.2)', borderRadius:'6px', padding:'5px 12px', color:'var(--blue-hi)', fontSize:'12px' },
-
-  twoCol: { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px' },
-  bodyText: { color:'var(--w8)', fontSize:'14px', lineHeight:'1.7', margin:0 },
-
-  hashtagsWrap: { display:'flex', flexWrap:'wrap', gap:'6px' },
-  hashtag: { background:'rgba(12,170,220,0.08)', borderRadius:'6px', padding:'4px 10px', color:'var(--blue-hi)', fontSize:'12px' },
-  igMeta: { color:'var(--w3)', fontSize:'13px', marginTop:'12px', marginBottom:0 },
-
-  h2Row: { display:'flex', gap:'10px', alignItems:'flex-start', marginBottom:'10px' },
-  h2Num: { background:'rgba(233,161,0,0.12)', borderRadius:'4px', padding:'3px 8px', color:'var(--gold)', fontSize:'11px', fontWeight:'700', whiteSpace:'nowrap' },
-  h2Text: { color:'var(--w8)', fontSize:'14px' },
-
-  repurposeCard: { background:'rgba(238,242,255,0.04)', borderRadius:'10px', padding:'16px', marginBottom:'10px' },
-  repurposeTop: { display:'flex', gap:'10px', marginBottom:'8px', alignItems:'center' },
-  repurposePlat: { background:'rgba(233,161,0,0.12)', borderRadius:'6px', padding:'4px 10px', color:'var(--gold)', fontSize:'12px', fontWeight:'700' },
-  repurposeFormat: { color:'var(--w5)', fontSize:'12px' },
-  repurposeAngle: { color:'var(--w8)', fontSize:'14px', lineHeight:'1.6', margin:0 },
-
-  scheduleBox: { background:'rgba(12,170,220,0.06)', border:'1px solid rgba(12,170,220,0.2)', borderRadius:'14px', padding:'24px', marginBottom:'8px' },
-  scheduleTitle: { color:'var(--blue-hi)', fontSize:'13px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.05em', margin:'0 0 12px' },
-  scheduleRow: { display:'flex', gap:'12px', flexWrap:'wrap', marginBottom:'12px' },
-  scheduleStat: { background:'rgba(12,170,220,0.1)', borderRadius:'6px', padding:'6px 14px', color:'var(--white)', fontSize:'14px', fontWeight:'600' },
-  scheduleReason: { color:'var(--w5)', fontSize:'13px', lineHeight:'1.6', margin:0 },
-
-  planGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:'14px' },
-  dayCard: { background:'rgba(238,242,255,0.04)', border:'1px solid rgba(238,242,255,0.08)', borderRadius:'12px', padding:'20px', transition:'border-color 0.2s' },
-  dayHeader: { display:'flex', gap:'10px', alignItems:'center', marginBottom:'12px' },
-  dayNum: { background:'rgba(233,161,0,0.15)', borderRadius:'6px', padding:'4px 12px', color:'var(--gold)', fontSize:'12px', fontWeight:'800' },
-  dayType: { color:'var(--w3)', fontSize:'11px', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.05em' },
-  dayTopic: { color:'var(--w8)', fontSize:'13px', lineHeight:'1.6', margin:'0 0 12px' },
-  dayMeta: { display:'flex', gap:'8px', flexWrap:'wrap' },
-  dayPlatform: { background:'rgba(12,170,220,0.1)', borderRadius:'4px', padding:'3px 8px', color:'var(--blue-hi)', fontSize:'11px' },
-  dayRepurpose: { color:'var(--w3)', fontSize:'11px' },
-
-  empty: { textAlign:'center', padding:'60px 20px' },
-  emptyMsg: { color:'var(--w3)', fontSize:'14px' },
+// ── Layout primitives ─────────────────────────────────────────────────────────
+const L = {
+  stack:     { display:'flex',flexDirection:'column',gap:'20px' },
+  statRow:   { display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'10px' },
+  statCard:  { background:'rgba(255,255,255,0.025)',border:`1px solid ${CB}`,borderRadius:'8px',padding:'18px 16px',textAlign:'center' },
+  statN:     { display:'block',fontFamily:'var(--FH)',fontSize:'26px',fontWeight:'800',color:CA,marginBottom:'4px' },
+  statLbl:   { display:'block',fontSize:'11px',color:C3,textTransform:'uppercase',letterSpacing:'0.07em',fontWeight:'600' },
+  block:     { border:`1px solid ${CB}`,borderRadius:'10px',overflow:'hidden' },
+  blockHead: { display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderBottom:`1px solid ${CB}`,background:'rgba(255,255,255,0.015)' },
+  blockTitle:{ fontSize:'13px',fontWeight:'700',color:C1,letterSpacing:'-0.01em' },
+  blockBody: { padding:'20px' },
+  scriptPre: { fontFamily:'var(--FB)',fontSize:'14px',color:C2,lineHeight:'1.8',whiteSpace:'pre-wrap',margin:0,wordBreak:'break-word' },
+  descPre:   { fontFamily:'var(--FB)',fontSize:'13px',color:C2,lineHeight:'1.75',whiteSpace:'pre-wrap',margin:0 },
+  ctaGrid:   { display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px' },
+  ctaCard:   { background:'rgba(255,255,255,0.02)',border:`1px solid ${CB}`,borderRadius:'8px',padding:'14px' },
+  goalBadge: { background:'rgba(12,170,220,0.1)',border:'1px solid rgba(12,170,220,0.2)',borderRadius:'4px',padding:'3px 9px',color:'rgba(56,189,248,0.85)',fontSize:'11px',fontWeight:'700',textTransform:'uppercase',letterSpacing:'0.05em' },
+  ctaQuote:  { fontFamily:'var(--FH)',fontSize:'14px',color:C1,margin:'0 0 6px',lineHeight:'1.4' },
+  ctaReason: { fontSize:'12px',color:C3,margin:0,lineHeight:'1.5' },
+  sceneCard: { border:`1px solid ${CB}`,borderRadius:'10px',padding:'18px',background:'rgba(255,255,255,0.015)' },
+  sceneHead: { display:'flex',gap:'10px',alignItems:'center',marginBottom:'10px',flexWrap:'wrap' },
+  sceneNum:  { background:'rgba(212,168,71,0.1)',borderRadius:'4px',padding:'3px 10px',color:CA,fontSize:'11px',fontWeight:'700' },
+  sceneType: { background:'rgba(255,255,255,0.05)',borderRadius:'4px',padding:'3px 10px',color:C3,fontSize:'11px',fontWeight:'600' },
+  sceneVo:   { fontSize:'14px',color:C1,lineHeight:'1.7',margin:'0 0 14px',paddingBottom:'14px',borderBottom:`1px solid ${CB}` },
+  sceneFields:{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:'12px' },
+  hookHero:  { background:'rgba(212,168,71,0.05)',border:`1px solid rgba(212,168,71,0.15)`,borderRadius:'10px',padding:'28px',textAlign:'center' },
+  hookHeroLabel:{ fontSize:'11px',fontWeight:'700',color:CA,textTransform:'uppercase',letterSpacing:'0.1em',margin:'0 0 14px' },
+  hookHeroText: { fontFamily:'var(--FH)',fontSize:'clamp(15px,2vw,20px)',fontWeight:'700',color:C1,margin:'0 0 14px',lineHeight:1.4 },
+  triggerTag:{ background:'rgba(212,168,71,0.1)',border:`1px solid rgba(212,168,71,0.2)`,borderRadius:'4px',padding:'3px 10px',color:CA,fontSize:'11px',fontWeight:'700',letterSpacing:'0.04em' },
+  ctrTag:    { borderRadius:'4px',padding:'3px 9px',fontSize:'11px',fontWeight:'700' },
+  breakdownList:{ display:'flex',flexDirection:'column' },
+  breakdownRow: { paddingBottom:'16px',marginBottom:'16px',borderBottom:`1px solid ${CB}` },
+  breakdownLbl: { fontSize:'11px',fontWeight:'700',color:CA,textTransform:'uppercase',letterSpacing:'0.08em',margin:'0 0 6px' },
+  breakdownVal: { fontSize:'13px',color:C2,lineHeight:'1.7',margin:0 },
+  hookGrid:  { display:'flex',flexDirection:'column',gap:'10px' },
+  hookCard:  { padding:'16px',background:'rgba(255,255,255,0.02)',border:`1px solid ${CB}`,borderRadius:'8px' },
+  piTable:   { width:'100%',borderCollapse:'collapse',fontSize:'13px' },
+  piTh:      { fontSize:'11px',color:C3,textTransform:'uppercase',letterSpacing:'0.07em',fontWeight:'600',padding:'0 12px 10px 0',textAlign:'left',borderBottom:`1px solid ${CB}` },
+  piTd:      { padding:'10px 12px 10px 0',verticalAlign:'top' },
+  recTitle:  { background:'rgba(212,168,71,0.06)',border:`1px solid rgba(212,168,71,0.15)`,borderRadius:'10px',padding:'18px 20px' },
+  recTitleLabel:{ fontSize:'11px',fontWeight:'700',color:CA,textTransform:'uppercase',letterSpacing:'0.1em',margin:0 },
+  recTitleText: { fontFamily:'var(--FH)',fontSize:'17px',fontWeight:'700',color:C1,margin:0,lineHeight:1.4 },
+  colGrid:   { display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px' },
+  titleRow:  { paddingBottom:'16px',borderBottom:`1px solid ${CB}`,marginBottom:'4px' },
+  primaryKw: { display:'inline-block',background:'rgba(212,168,71,0.1)',border:`1px solid rgba(212,168,71,0.2)`,borderRadius:'5px',padding:'5px 12px',color:CA,fontSize:'13px',fontWeight:'700' },
+  secKw:     { display:'inline-block',background:'rgba(255,255,255,0.04)',border:`1px solid ${CB}`,borderRadius:'5px',padding:'5px 10px',color:C2,fontSize:'12px' },
+  tag:       { display:'inline-block',background:'rgba(255,255,255,0.04)',border:`1px solid ${CB}`,borderRadius:'4px',padding:'4px 10px',color:C3,fontSize:'12px' },
+  hashTag:   { display:'inline-block',background:'rgba(56,189,248,0.07)',border:'1px solid rgba(56,189,248,0.12)',borderRadius:'4px',padding:'3px 9px',color:'rgba(56,189,248,0.7)',fontSize:'12px' },
+  miniLabel: { fontSize:'11px',fontWeight:'700',color:C3,textTransform:'uppercase',letterSpacing:'0.1em',margin:'0 0 10px' },
+  kvTable:   { display:'flex',flexDirection:'column',gap:'12px' },
+  kvRow:     { display:'flex',gap:'16px',alignItems:'flex-start',paddingBottom:'12px',borderBottom:`1px solid ${CB}` },
+  kvKey:     { fontSize:'12px',color:C3,fontWeight:'600',minWidth:'130px',flexShrink:0,paddingTop:'2px' },
+  kvVal:     { fontSize:'13px',lineHeight:'1.5' },
+  scheduleBox:{ background:'rgba(255,255,255,0.02)',border:`1px solid ${CB}`,borderRadius:'10px',padding:'18px 20px' },
+  schedStat: { background:'rgba(255,255,255,0.05)',border:`1px solid ${CB}`,borderRadius:'5px',padding:'6px 12px',color:C1,fontSize:'13px',fontWeight:'600' },
+  planGrid:  { display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:'12px' },
+  dayCard:   { background:'rgba(255,255,255,0.02)',border:`1px solid ${CB}`,borderRadius:'8px',padding:'16px',transition:'border-color 0.2s' },
+  dayNum:    { background:'rgba(212,168,71,0.1)',borderRadius:'4px',padding:'3px 9px',color:CA,fontSize:'11px',fontWeight:'800' },
+  dayType:   { fontSize:'11px',color:C3,textTransform:'uppercase',letterSpacing:'0.05em',fontWeight:'600' },
+  dayPlat:   { background:'rgba(56,189,248,0.07)',border:'1px solid rgba(56,189,248,0.1)',borderRadius:'4px',padding:'3px 8px',color:'rgba(56,189,248,0.7)',fontSize:'11px' },
 };

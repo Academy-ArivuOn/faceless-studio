@@ -1,3 +1,4 @@
+// D:\faceless-studio\faceless-studio\app\api\generate\route.js
 export const runtime     = 'nodejs';
 export const maxDuration = 120; // Full pipeline: research + creator + publisher
 
