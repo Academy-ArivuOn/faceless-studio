@@ -142,9 +142,40 @@ LANGUAGE: English (International)
 }
 
 // ─── Research Prompt ──────────────────────────────────────────────────────────
-export function buildResearchPrompt({ niche, platform, creatorType, language, tone }) {
+export function buildResearchPrompt({
+  niche,
+  platform,
+  creatorType,
+  language,
+  tone,
+  trendData = null, // NEW PARAMETER
+}) {
   const platformCtx = getPlatformContext(platform, creatorType);
-  const langCtx     = getLanguageContext(language);
+  const langCtx = getLanguageContext(language);
+
+  // Format trend data for injection into prompt
+  let trendsInstructions = '';
+  if (trendData && trendData.trends && trendData.trends.length > 0) {
+    const trendsList = trendData.trends
+      .map(
+        (t, i) =>
+          `${i + 1}. "${t.topic}" (Source: ${t.source}, Virality: ${t.virality_score}, Age: ${t.recency_hours}h)`
+      )
+      .join('\n');
+
+    trendsInstructions = `
+LIVE TREND SIGNALS (Real-time data, fetched minutes ago):
+${trendsList}
+
+CRITICAL RULES FOR USING LIVE TRENDS:
+1. PRIORITIZE these signals over your internal knowledge
+2. Build your trending_angles DIRECTLY from these topics or close variations
+3. If a trend has virality_score > 50, mark it as URGENCY: HIGH
+4. Combine overlapping trends into stronger composite angles
+5. If low_confidence is true, supplement with 1 related angle from your knowledge
+6. NEVER invent trends not in this list if high-confidence data exists
+`;
+  }
 
   return `
 You are the Research Agent for Studio AI. Your job: find the STRONGEST possible content angle
@@ -157,12 +188,14 @@ CREATOR BRIEF:
 - Target Language: ${language || 'English'}
 - Tone: ${tone || 'Educational'}
 
+${trendsInstructions}
+
 ${platformCtx}
 
 ${langCtx}
 
 YOUR TASK:
-1. Think of 3 content angles that are trending, evergreen-with-urgency, or strongly underserved in this niche right now.
+1. ${trendsInstructions ? 'Use the provided LIVE TREND SIGNALS above as your primary source.' : 'Think of 3 content angles that are trending, evergreen-with-urgency, or strongly underserved in this niche right now.'}
 2. For each angle: identify the audience emotion it triggers, the search intent, and why it's right NOW.
 3. Select the single strongest angle for this platform and audience.
 4. Write 3 different hook options with different psychological triggers for the chosen angle.

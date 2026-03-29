@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import Navbar from '@/components/layout/Navbar';
 
 // ── Color tokens ──────────────────────────────────────────────────────────────
 const CA  = '#D4A847';
@@ -53,16 +54,7 @@ export default function DashboardPage() {
     <div style={D.root}>
 
       {/* ── Topbar ── */}
-      <header style={D.topbar}>
-        <div style={D.tbLeft}>
-          <HexLogo />
-          <span style={D.brand}>Studio AI</span>
-        </div>
-        <div style={D.tbRight}>
-          <button style={D.ghost} onClick={() => router.push('/generate')}>+ Generate</button>
-          <button style={D.btn} onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>Sign out</button>
-        </div>
-      </header>
+      <Navbar />
 
       <div style={D.container}>
 
