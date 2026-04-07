@@ -59,12 +59,12 @@ const S = {
   hint:   { fontSize: '12px', color: C3, lineHeight: '1.5' },
   input:  {
     background: 'rgba(255,255,255,0.03)', border: `1px solid ${CB}`,
-    borderRadius: '8px', padding: '11px 14px', color: C1, fontSize: '14px',
+    borderRadius: '8px', padding: '11px 14px', color: '#0A0A0A', fontSize: '14px',
     fontFamily: 'var(--FB)', outline: 'none', width: '100%', boxSizing: 'border-box',
   },
   select: {
     background: 'rgba(255,255,255,0.03)', border: `1px solid ${CB}`,
-    borderRadius: '8px', padding: '11px 36px 11px 14px', color: C1, fontSize: '14px',
+    borderRadius: '8px', padding: '11px 36px 11px 14px', color: '#0A0A0A', fontSize: '14px',
     fontFamily: 'var(--FB)', outline: 'none', cursor: 'pointer', width: '100%',
     appearance: 'none', backgroundImage: SEL_ARROW,
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center',

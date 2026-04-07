@@ -386,3 +386,28 @@ select option {
 ::-webkit-scrollbar-thumb { background: rgba(238,242,255,0.15); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(233,161,0,0.4); }
 
+/* app/globals.css — add these */
+:root {
+  /* Light theme tokens */
+  --bg:        #FAFAFA;
+  --surface:   #FFFFFF;
+  --border:    #F3F4F6;
+  --border-md: #E5E7EB;
+  --text-1:    #0A0A0A;
+  --text-2:    #374151;
+  --text-3:    #6B7280;
+  --text-4:    #9CA3AF;
+
+  /* Accent colors */
+  --green:   #059669;
+  --amber:   #D97706;
+  --red:     #DC2626;
+  --blue:    #3B82F6;
+
+  /* Keep your existing dark vars for any dark panels */
+  --void:    #07070E;
+  --gold:    #D4A847;
+  --FH:      "Syne", sans-serif;
+  --FB:      "DM Sans", sans-serif;
+  --FM:      "Space Mono", monospace;
+}

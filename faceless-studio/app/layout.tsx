@@ -1,5 +1,22 @@
 import './globals.css'
 import type { ReactNode } from 'react'
+import { Instrument_Serif, DM_Sans } from 'next/font/google';
+
+
+const instrumentSerif = Instrument_Serif({
+  weight: ['400'],
+  style: ['normal', 'italic'],
+  subsets: ['latin'],
+  variable: '--font-serif',
+});
+
+const dmSans = DM_Sans({
+  weight: ['300', '400', '500', '600'],
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
+
+
 export const metadata = {
   metadataBase: new URL('https://facelessstudio.ai'),
   title: {

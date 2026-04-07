@@ -165,7 +165,7 @@ function CopyBtn({ text, label = 'Copy' }) {
 function Block({ title, children, action, accent }) {
   return (
     <div style={{ border:`1px solid ${accent ? 'rgba(212,168,71,0.2)' : CB}`, borderRadius:10, overflow:'hidden', marginBottom:14 }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 16px', borderBottom:`1px solid ${CB}`, background: accent ? 'rgba(212,168,71,0.04)' : 'rgba(255,255,255,0.015)' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'11px 16px', borderBottom:`#fff`, background: accent ? 'rgba(212,168,71,0.04)' : 'rgba(255,255,255,0.015)' }}>
         <span style={{ fontSize:12, fontWeight:700, color: accent ? CA : C1, letterSpacing:'-0.01em' }}>{title}</span>
         {action}
       </div>
@@ -982,7 +982,7 @@ export default function AgentsPage() {
     <div style={{ minHeight:'100vh', background:BG, fontFamily:'var(--FB)', color:C1, display:'flex', flexDirection:'column' }}>
 
       {/* Topbar */}
-      <header style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 24px', height:54, borderBottom:`1px solid ${CB}`, flexShrink:0, position:'sticky', top:0, background:'rgba(7,7,14,0.95)', backdropFilter:'blur(12px)', zIndex:50 }}>
+      <header style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 24px', height:54, borderBottom:`1px solid ${CB}`, flexShrink:0, position:'sticky', top:0, background:'#fff', backdropFilter:'blur(12px)', zIndex:50 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <HexLogo />
           <span style={{ fontFamily:'var(--FH)', fontSize:15, fontWeight:700, color:C1, letterSpacing:'-0.02em' }}>Studio AI</span>
