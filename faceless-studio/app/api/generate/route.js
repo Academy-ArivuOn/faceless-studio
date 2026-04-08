@@ -1,12 +1,12 @@
-// D:\faceless-studio\faceless-studio\app\api\generate\route.js
 export const runtime     = 'nodejs';
-export const maxDuration = 120; // Full pipeline: research + creator + publisher
+export const maxDuration = 120;
 
 import { verifyAuth, checkUsage, incrementUsage, saveGeneration, updateStreak } from '@/lib/supabase';
+import { getCreatorDNA, buildDNAContextBlock, updateCreatorDNA } from '@/lib/creator-dna';
+import { saveSessionContext } from '@/lib/session-context';
+import { randomUUID } from 'crypto';
 
-// ─── Internal Agent Caller ────────────────────────────────────────────────────
-// Calls an agent route internally and validates the response.
-async function callAgent(agentName, payload, authHeader) {
+async function callAgent(agentName, payload, authHeader, dna, sessionId) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const url     = `${baseUrl}/api/agents/${agentName}`;
 
@@ -14,17 +14,18 @@ async function callAgent(agentName, payload, authHeader) {
     method:  'POST',
     headers: {
       'Content-Type':  'application/json',
-      'Authorization': authHeader,                        // forward auth token
-      'x-internal':    process.env.INTERNAL_SECRET || '', // optional security header
+      'Authorization': authHeader,
+      'x-internal':    process.env.INTERNAL_SECRET || '',
+      'x-session-id':  sessionId || '',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, _dna: dna, _sessionId: sessionId }),
   });
 
   const json = await response.json();
 
   if (!response.ok || !json.success) {
     const err = new Error(json.error || `${agentName} agent returned status ${response.status}`);
-    err.agentName = agentName;
+    err.agentName  = agentName;
     err.statusCode = response.status;
     throw err;
   }
@@ -32,13 +33,13 @@ async function callAgent(agentName, payload, authHeader) {
   return { data: json.data, meta: json.meta };
 }
 
-// ─── POST Handler ─────────────────────────────────────────────────────────────
 export async function POST(request) {
-  const pipelineStart = Date.now();
+  const pipelineStart  = Date.now();
   const agentDurations = {};
+  const sessionId      = randomUUID();
 
   try {
-    // ── Step 1: Verify Auth ────────────────────────────────────────────────
+    // ── Auth ───────────────────────────────────────────────────────────────────
     let user;
     try {
       user = await verifyAuth(request);
@@ -49,53 +50,35 @@ export async function POST(request) {
       );
     }
 
-    // ── Step 2: Check Usage Limit ─────────────────────────────────────────
+    // ── Usage ──────────────────────────────────────────────────────────────────
     let usageCheck;
     try {
       usageCheck = await checkUsage(user.id);
     } catch (usageError) {
       console.error('[generate] Usage check failed:', usageError.message);
-      return Response.json(
-        { error: 'Failed to check usage limits. Please try again.' },
-        { status: 500 }
-      );
+      return Response.json({ error: 'Failed to check usage limits. Please try again.' }, { status: 500 });
     }
 
     if (!usageCheck.allowed) {
       return Response.json(
-        {
-          error:     usageCheck.reason || 'Monthly generation limit reached',
-          code:      'UPGRADE_REQUIRED',
-          plan:      usageCheck.plan,
-          used:      usageCheck.used,
-          limit:     usageCheck.limit,
-          reset_date: usageCheck.reset_date,
-        },
+        { error: usageCheck.reason || 'Monthly generation limit reached', code: 'UPGRADE_REQUIRED',
+          plan: usageCheck.plan, used: usageCheck.used, limit: usageCheck.limit, reset_date: usageCheck.reset_date },
         { status: 403 }
       );
     }
 
-    // ── Step 3: Parse & Validate Input ────────────────────────────────────
+    // ── Parse body ─────────────────────────────────────────────────────────────
     let body;
-    try {
-      body = await request.json();
-    } catch {
-      return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 });
-    }
+    try { body = await request.json(); }
+    catch { return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 }); }
 
     const {
-      niche,
-      platform    = 'YouTube',
-      creatorType = 'general',
-      tone        = 'Educational',
-      language    = 'English',
+      niche, platform = 'YouTube', creatorType = 'general',
+      tone = 'Educational', language = 'English',
     } = body;
 
     if (!niche || typeof niche !== 'string' || niche.trim().length < 2) {
-      return Response.json(
-        { error: 'niche is required (minimum 2 characters)' },
-        { status: 400 }
-      );
+      return Response.json({ error: 'niche is required (minimum 2 characters)' }, { status: 400 });
     }
 
     const cleanInput = {
@@ -106,31 +89,34 @@ export async function POST(request) {
       language:    language.toString().trim().slice(0, 50),
     };
 
-    // Forward the original auth header to agent sub-calls
     const authHeader = request.headers.get('Authorization') || '';
 
-    // ── Step 4: Research Agent ─────────────────────────────────────────────
+    // ── Fetch Creator DNA ──────────────────────────────────────────────────────
+    const dna = await getCreatorDNA(user.id);
+    const dnaBlock = buildDNAContextBlock(dna, cleanInput);
+
+    // ── Research Agent ─────────────────────────────────────────────────────────
     let research;
     {
       const t0 = Date.now();
       try {
-        const result = await callAgent('research', cleanInput, authHeader);
+        const result = await callAgent('research', { ...cleanInput, _dnaBlock: dnaBlock }, authHeader, dna, sessionId);
         research = result.data;
         agentDurations.research = Date.now() - t0;
+
+        // Save research output to session context for chain
+        await saveSessionContext(user.id, sessionId, { research });
       } catch (err) {
         console.error('[generate] Research agent failed:', err.message);
         return Response.json(
-          {
-            error: 'Content research failed. Please try again with a more specific niche.',
-            stage: 'research',
-            detail: process.env.NODE_ENV === 'development' ? err.message : undefined,
-          },
+          { error: 'Content research failed. Please try again with a more specific niche.', stage: 'research',
+            detail: process.env.NODE_ENV === 'development' ? err.message : undefined },
           { status: 500 }
         );
       }
     }
 
-    // ── Step 5: Creator Agent ──────────────────────────────────────────────
+    // ── Creator Agent ──────────────────────────────────────────────────────────
     let creator;
     {
       const t0 = Date.now();
@@ -143,23 +129,25 @@ export async function POST(request) {
           hookAnalysis:   research.chosen_hook_deep_analysis,
           competitorGap:  research.competitor_gap,
           targetAudience: research.target_audience_description,
-        }, authHeader);
+          _dnaBlock:      dnaBlock,
+          _creatorMode:   dna?.creator_mode || 'faceless',
+        }, authHeader, dna, sessionId);
         creator = result.data;
         agentDurations.creator = Date.now() - t0;
+
+        // Append creator output to session context
+        await saveSessionContext(user.id, sessionId, { research, creator });
       } catch (err) {
         console.error('[generate] Creator agent failed:', err.message);
         return Response.json(
-          {
-            error: 'Script generation failed. Please try again.',
-            stage: 'creator',
-            detail: process.env.NODE_ENV === 'development' ? err.message : undefined,
-          },
+          { error: 'Script generation failed. Please try again.', stage: 'creator',
+            detail: process.env.NODE_ENV === 'development' ? err.message : undefined },
           { status: 500 }
         );
       }
     }
 
-    // ── Step 6: Publisher Agent ────────────────────────────────────────────
+    // ── Publisher Agent ────────────────────────────────────────────────────────
     let publisher;
     {
       const t0 = Date.now();
@@ -168,60 +156,57 @@ export async function POST(request) {
           ...cleanInput,
           chosenTopic:    research.chosen_topic,
           chosenHook:     research.chosen_hook,
-          // Pass only the first 500 chars of the script for context
           scriptExcerpt:  (creator.full_script || '').slice(0, 500),
           targetAudience: research.target_audience_description,
-        }, authHeader);
+          _dnaBlock:      dnaBlock,
+        }, authHeader, dna, sessionId);
         publisher = result.data;
         agentDurations.publisher = Date.now() - t0;
       } catch (err) {
         console.error('[generate] Publisher agent failed:', err.message);
         return Response.json(
-          {
-            error: 'Distribution asset generation failed. Please try again.',
-            stage: 'publisher',
-            detail: process.env.NODE_ENV === 'development' ? err.message : undefined,
-          },
+          { error: 'Distribution asset generation failed. Please try again.', stage: 'publisher',
+            detail: process.env.NODE_ENV === 'development' ? err.message : undefined },
           { status: 500 }
         );
       }
     }
 
-    // ── Step 7: Persist results (non-critical — parallel) ─────────────────
+    // ── Persist results ────────────────────────────────────────────────────────
     const totalDurationMs = Date.now() - pipelineStart;
 
     const [saveResult, streakResult, usageResult] = await Promise.allSettled([
-      saveGeneration({
-        userId:     user.id,
-        input:      cleanInput,
-        research,
-        creator,
-        publisher,
-        durationMs: totalDurationMs,
-      }),
+      saveGeneration({ userId: user.id, input: cleanInput, research, creator, publisher, durationMs: totalDurationMs }),
       updateStreak(user.id),
       incrementUsage(user.id),
     ]);
 
+    // Update creator DNA with what we learned this session
+    if (dna !== null) {
+      await updateCreatorDNA(user.id, {
+        primary_niche:    cleanInput.niche,
+        primary_platform: cleanInput.platform,
+        primary_language: cleanInput.language,
+        creator_type:     cleanInput.creatorType,
+      });
+    }
+
     const generationId = saveResult.status === 'fulfilled' ? saveResult.value : null;
     const newStreak    = streakResult.status === 'fulfilled' ? streakResult.value : null;
 
-    if (saveResult.status === 'rejected')  console.error('[generate] saveGeneration failed:',  saveResult.reason?.message);
-    if (streakResult.status === 'rejected') console.error('[generate] updateStreak failed:',   streakResult.reason?.message);
-    if (usageResult.status === 'rejected')  console.error('[generate] incrementUsage failed:', usageResult.reason?.message);
-
-    // ── Step 8: Return Full Package ────────────────────────────────────────
     return Response.json({
-      success:      true,
+      success: true,
       generationId,
-      input:        cleanInput,
+      sessionId,
+      input:     cleanInput,
       research,
       creator,
       publisher,
+      dna:       dna ? { creator_mode: dna.creator_mode, channel_size: dna.channel_size } : null,
       meta: {
         total_duration_ms: totalDurationMs,
         agent_durations:   agentDurations,
-        streak:  newStreak,
+        streak:            newStreak,
         usage: {
           plan:      usageCheck.plan,
           used:      (usageCheck.used || 0) + 1,
@@ -235,10 +220,8 @@ export async function POST(request) {
   } catch (err) {
     console.error('[generate] Unexpected top-level error:', err);
     return Response.json(
-      {
-        error:  'An unexpected error occurred. Please try again.',
-        detail: process.env.NODE_ENV === 'development' ? err.message : undefined,
-      },
+      { error: 'An unexpected error occurred. Please try again.',
+        detail: process.env.NODE_ENV === 'development' ? err.message : undefined },
       { status: 500 }
     );
   }

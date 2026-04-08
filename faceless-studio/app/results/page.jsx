@@ -1,7 +1,44 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import React from 'react';
 import ResultTabs from '@/components/app/ResultTabs';
+
+class ResultTabErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('[ResultTabs] Error boundary caught:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '40px 24px', textAlign: 'center', border: '1px solid #FCA5A5', borderRadius: 12, background: '#FEF2F2', margin: '24px 0' }}>
+          <p style={{ fontSize: 20, marginBottom: 12 }}>⚠️</p>
+          <p style={{ fontFamily: "'Playfair Display', serif", fontSize: 18, fontWeight: 700, color: '#0A0A0A', marginBottom: 8 }}>
+            Something went wrong displaying this section
+          </p>
+          <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6, marginBottom: 20 }}>
+            The content was generated but could not be displayed. Try refreshing, or generate again.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            style={{ background: '#0A0A0A', border: 'none', borderRadius: 8, padding: '10px 20px', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function ResultTabsWithBoundary(props) {
+  return (
+    <ResultTabErrorBoundary>
+      <ResultTabs {...props} />
+    </ResultTabErrorBoundary>
+  );
+}
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -408,7 +445,7 @@ export default function ResultsPage() {
         {/* Content — using ResultTabs which handles all 6 tabs */}
         <div className="results-body">
           <div className="results-body-inner">
-            <ResultTabs
+            <ResultTabsWithBoundary
               research={research}
               creator={creator}
               publisher={publisher}

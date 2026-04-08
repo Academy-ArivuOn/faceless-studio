@@ -1,8 +1,14 @@
 // ─── PRO AGENT PROMPTS ────────────────────────────────────────────────────────
+// ─── DNA + Chain injection ────────────────────────────────────────────────────
+function injectContext(prompt, _dnaBlock = '', _chainBlock = '') {
+  const injections = [_dnaBlock, _chainBlock].filter(Boolean).join('\n\n');
+  if (!injections) return prompt;
+  return `${injections}\n\n${prompt}`;
+}
 
 // ── 1. Trend Spy ──────────────────────────────────────────────────────────────
-export function buildTrendSpyPrompt({ niche, platform, language = 'English' }) {
-  return `
+export function buildTrendSpyPrompt({ niche, platform, language = 'English', _dnaBlock = '', _chainBlock = '' }) {
+  const prompt = `
 You are the Trend Spy Agent for Studio AI. Your job: deliver a sharp, actionable 48-hour trend
 brief for this creator's niche. Every item must be specific, timely, and directly usable.
 
@@ -90,11 +96,12 @@ Return ONLY this JSON:
   "niche_pulse": "2-3 sentence macro summary of where this niche is right now — what's the dominant mood, what's overdone, what gap exists"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock);
 }
 
 // ── 2. Title Battle (A/B) ─────────────────────────────────────────────────────
-export function buildTitleBattlePrompt({ topic, currentTitle, platform, niche, creatorType = 'general' }) {
-  return `
+export function buildTitleBattlePrompt({ topic, currentTitle, platform, niche, creatorType = 'general', _dnaBlock = '', _chainBlock = '' }) {
+  const prompt = `
 You are the Title Battle Agent for Studio AI. Your job: generate 10 title variants for this
 topic, score each on CTR psychology, and declare a clear winner with full reasoning.
 
@@ -154,11 +161,12 @@ Return ONLY this JSON:
   "title_formula": "the underlying formula that works best for this niche + platform combination — reusable for future titles"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 3. Thumbnail Brain ────────────────────────────────────────────────────────
-export function buildThumbnailBrainPrompt({ topic, chosenHook, platform, niche, titleText = '' }) {
-  return `
+export function buildThumbnailBrainPrompt({ topic, chosenHook, platform, niche, titleText = '', _dnaBlock = '', _chainBlock = '' }) {
+  const prompt = `
 You are the Thumbnail Brain Agent for Studio AI. Your job: produce a complete, designer-ready
 thumbnail brief. No image generation — this is a full creative brief a human designer or AI
 image tool can execute directly.
@@ -213,11 +221,12 @@ Return ONLY this JSON:
   "mobile_check": "does the primary concept pass the 120px mobile thumb test? what might get lost?"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 4. Hook Upgrader ──────────────────────────────────────────────────────────
-export function buildHookUpgraderPrompt({ weakHook, niche, platform, tone = 'Educational' }) {
-  return `
+export function buildHookUpgraderPrompt({ weakHook, niche, platform, tone = 'Educational', _dnaBlock = '', _chainBlock = '' }) {
+  const prompt = `
 You are the Hook Upgrader Agent for Studio AI. Your job: take a weak hook and rewrite it 5 times,
 each using a different psychological trigger, scored and ranked.
 
@@ -274,15 +283,16 @@ Return ONLY this JSON:
   "hook_formula": "the reusable hook formula extracted from the winning upgrade — generalised for future use"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 5. Comment Reply ──────────────────────────────────────────────────────────
-export function buildCommentReplyPrompt({ comments, niche, platform, channelTone = 'Educational', channelName = '' }) {
+export function buildCommentReplyPrompt({ comments, niche, platform, channelTone = 'Educational', channelName = '', _dnaBlock = '', _chainBlock = '' }) {
   const commentList = Array.isArray(comments)
     ? comments.map((c, i) => `${i + 1}. "${c}"`).join('\n')
     : String(comments);
 
-  return `
+  const prompt = `
 You are the Comment Reply Agent for Studio AI. Your job: write algorithm-optimised, brand-consistent
 replies to these comments. Replies must feel genuinely human — not copy-paste, not robotic.
 
@@ -325,13 +335,14 @@ Return ONLY this JSON:
   "content_signal": "any comment that signals what future content to make — summarise the demand"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ─── STUDIO AGENT PROMPTS ─────────────────────────────────────────────────────
 
 // ── 6. Competitor Autopsy ─────────────────────────────────────────────────────
-export function buildCompetitorAutopsyPrompt({ channelName, niche, platform, subscriberCount = '' }) {
-  return `
+export function buildCompetitorAutopsyPrompt({ channelName, niche, platform, subscriberCount = '', _dnaBlock = '', _chainBlock = '' }) {
+  const prompt = `
 You are the Competitor Autopsy Agent for Studio AI. Your job: dissect a competitor channel's
 patterns, identify what's driving their growth, and expose gaps the user can exploit.
 
@@ -415,11 +426,12 @@ Return ONLY this JSON:
   }
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 7. Viral Decoder ──────────────────────────────────────────────────────────
-export function buildViralDecoderPrompt({ videoTitle, channelName, viewCount, niche, platform }) {
-  return `
+export function buildViralDecoderPrompt({ videoTitle, channelName, viewCount, niche, platform, _dnaBlock = '', _chainBlock = '' }) {
+  const prompt = `
 You are the Viral Decoder Agent for Studio AI. Your job: reverse-engineer exactly why a piece of
 content went viral and extract a replicable formula.
 
@@ -491,14 +503,16 @@ Return ONLY this JSON:
   }
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 8. Channel Strategy ───────────────────────────────────────────────────────
 export function buildChannelStrategyPrompt({
   niche, platform, currentSubscribers, monetisationGoal,
   contentFrequency, biggestChallenge, targetAudience,
+  _dnaBlock = '', _chainBlock = ''
 }) {
-  return `
+  const prompt = `
 You are the Channel Strategy Agent for Studio AI. Your job: build a precise, actionable 90-day
 content roadmap based on this creator's situation.
 
@@ -603,13 +617,14 @@ Return ONLY this JSON:
   "biggest_risk": "the single thing most likely to derail this strategy and how to mitigate it"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 9. Monetisation Coach ─────────────────────────────────────────────────────
 export function buildMonetisationCoachPrompt({
-  niche, platform, subscriberCount, averageViews, location = 'India',
+  niche, platform, subscriberCount, averageViews, location = 'India', _dnaBlock = '', _chainBlock = ''
 }) {
-  return `
+  const prompt = `
 You are the Monetisation Coach Agent for Studio AI. Your job: deliver a complete monetisation
 strategy — CPM analysis, affiliate matches, and a production-ready sponsor pitch email.
 
@@ -706,14 +721,15 @@ Return ONLY this JSON:
   ]
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }
 
 // ── 10. Script Localiser ──────────────────────────────────────────────────────
 export function buildScriptLocaliserPrompt({
-  originalScript, targetLanguage, niche, platform, creatorType = 'general',
+  originalScript, targetLanguage, niche, platform, creatorType = 'general', _dnaBlock = '', _chainBlock = ''
 }) {
   const excerpt = (originalScript || '').slice(0, 3000); // cap to prevent prompt overflow
-  return `
+  const prompt = `
 You are the Script Localiser Agent for Studio AI. Your job: adapt this English script into
 ${targetLanguage} with full cultural authenticity. This is NOT translation — it is localisation.
 
@@ -774,4 +790,5 @@ Return ONLY this JSON:
   "recording_notes": "specific delivery guidance for recording in ${targetLanguage} — pace, emphasis points, where to switch languages if applicable"
 }
 `.trim();
+  return injectContext(prompt, _dnaBlock, _chainBlock)
 }

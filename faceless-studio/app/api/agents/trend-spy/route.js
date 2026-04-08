@@ -1,16 +1,15 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 30;
 
-import { guardAgent }             from '@/lib/plan-guard';
-import { buildTrendSpyPrompt }    from '@/lib/agents/pro-prompts';
-import { callGeminiWithRetry }    from '@/lib/gemini';
-import { sanitise }               from '@/lib/agents/validator';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
+import { buildTrendSpyPrompt }     from '@/lib/agents/pro-prompts';
+import { callGeminiWithRetry }     from '@/lib/gemini';
+import { sanitise }                from '@/lib/agents/validator';
 
 export async function POST(request) {
   const startMs = Date.now();
 
-  // ── Plan gate (Pro required) ───────────────────────────────────────────────
-  const guard = await guardAgent(request, 'trend-spy');
+  const guard = await guardAgentWithContext(request, 'trend-spy');
   if (guard.blocked) return guard.response;
 
   try {
@@ -29,6 +28,8 @@ export async function POST(request) {
       niche:    niche.trim().slice(0, 150),
       platform: platform.trim().slice(0, 80),
       language: (language || 'English').trim().slice(0, 50),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildTrendSpyPrompt(cleanInput);
@@ -47,24 +48,20 @@ export async function POST(request) {
 
     const data = sanitise(result.data);
 
-    // Inject real timestamp
     if (data.generated_at === 'ISO timestamp placeholder' || !data.generated_at) {
       data.generated_at = new Date().toISOString();
-    }
-
-    // Validate minimum fields
-    if (!Array.isArray(data.trending_now) || data.trending_now.length < 3) {
-      console.warn('[trend-spy] Insufficient trending topics returned');
     }
 
     return Response.json({
       success: true,
       data,
       meta: {
-        agent:        'trend-spy',
-        duration_ms:  Date.now() - startMs,
-        trend_count:  data.trending_now?.length || 0,
-        idea_count:   data.content_ideas_today?.length || 0,
+        agent:       'trend-spy',
+        duration_ms: Date.now() - startMs,
+        trend_count: data.trending_now?.length || 0,
+        idea_count:  data.content_ideas_today?.length || 0,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 
