@@ -3,763 +3,583 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
-// ─── CORPORATE PREMIUM WHITE/BLACK THEME ─────────────────────────────────────
-// Typography: Playfair Display (serif display) + DM Sans (body) + JetBrains Mono
-// Colors: Pure White #FFFFFF, Carbon Black #0A0A0A, Platinum #F5F5F5,
-//         Steel #8C8C8C, Gold accent #C9A227, Signal Green #0E7C4A
-
 export default function SignupPage() {
   const router   = useRouter();
   const supabase = getSupabaseBrowser();
 
-  const [mode,     setMode]     = useState('signup');
+  const [mode, setMode] = useState('signup');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [name,     setName]     = useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
-  const [success,  setSuccess]  = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [mounted,  setMounted]  = useState(false);
+  const [info,     setInfo]     = useState('');
+  const [showPwd,  setShowPwd]  = useState(false);
+  const [checking, setChecking] = useState(true);
 
+  // Redirect already-logged-in users
   useEffect(() => {
-    setMounted(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) router.replace('/generate');
+      else setChecking(false);
     });
   }, []);
 
-  async function handleSubmit(e) {
+  if (checking) return (
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2.5px solid #E8E8E8', borderTopColor: '#0A0A0A', animation: 'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  // Always reset error+info when switching tabs
+  function switchMode(m) {
+    setMode(m);
+    setError('');
+    setInfo('');
+    // Don't clear email so user doesn't have to retype
+    setPassword('');
+    setShowPwd(false);
+  }
+
+  function clearAlerts() { setError(''); setInfo(''); }
+
+  // ── LOGIN ──────────────────────────────────────────────────────────────────
+  async function handleLogin(e) {
     e.preventDefault();
-    setError(''); setSuccess(''); setLoading(true);
-    try {
-      if (mode === 'signup') {
-        const { error: err } = await supabase.auth.signUp({
-          email, password,
-          options: { data: { full_name: name } },
-        });
-        if (err) throw err;
-        setSuccess('Account created — check your email to confirm, then sign in.');
-        setMode('login');
+    clearAlerts();
+    if (!email.trim())    { setError('Email is required.'); return; }
+    if (!password.trim()) { setError('Password is required.'); return; }
+    setLoading(true);
+
+    const { data, error: authErr } = await supabase.auth.signInWithPassword({
+      email:    email.trim().toLowerCase(),
+      password: password,
+    });
+
+    if (authErr) {
+      const msg = authErr.message.toLowerCase();
+      if (msg.includes('invalid login credentials') || msg.includes('invalid email') || msg.includes('wrong password')) {
+        setError('Incorrect email or password. Please try again.');
+      } else if (msg.includes('email not confirmed')) {
+        setError('Please confirm your email first. Check your inbox for the verification link.');
+      } else if (msg.includes('too many requests')) {
+        setError('Too many attempts. Please wait a few minutes and try again.');
       } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
-        router.replace('/generate');
+        setError(authErr.message || 'Login failed. Please try again.');
       }
-    } catch (err) {
-      setError(err.message || 'Something went wrong.');
-    } finally {
+      setLoading(false);
+      return;
+    }
+
+    if (data?.session) {
+      router.push('/generate');
+    } else {
+      setError('Login failed — no session returned. Please try again.');
       setLoading(false);
     }
   }
 
-  const STEPS = ['Research', 'Script', 'Distribute'];
+  // ── SIGN UP ────────────────────────────────────────────────────────────────
+  async function handleSignup(e) {
+    e.preventDefault();
+    clearAlerts();
+    if (!name.trim())       { setError('Full name is required.'); return; }
+    if (!email.trim())      { setError('Email is required.'); return; }
+    if (password.length < 8){ setError('Password must be at least 8 characters.'); return; }
+    setLoading(true);
+
+    const { data, error: authErr } = await supabase.auth.signUp({
+      email:    email.trim().toLowerCase(),
+      password: password,
+      options: {
+        data: { full_name: name.trim() },
+        emailRedirectTo: `${window.location.origin}/generate`,
+      },
+    });
+
+    if (authErr) {
+      const msg = authErr.message.toLowerCase();
+      if (msg.includes('already registered') || msg.includes('already exists') || msg.includes('user already')) {
+        setError('An account with this email already exists. Sign in instead.');
+      } else {
+        setError(authErr.message || 'Sign up failed. Please try again.');
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Auto-confirmed (e.g. dev mode / email confirm disabled)
+    if (data?.session) {
+      router.push('/generate');
+      return;
+    }
+
+    // Email confirmation required
+    setInfo(`We sent a confirmation link to ${email.trim()}. Click it to activate your account, then sign in.`);
+    setLoading(false);
+  }
+
+  // ── FORGOT PASSWORD ────────────────────────────────────────────────────────
+  async function handleForgot(e) {
+    e.preventDefault();
+    clearAlerts();
+    if (!email.trim()) { setError('Enter your email address.'); return; }
+    setLoading(true);
+
+    const { error: authErr } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: `${window.location.origin}/update-password` }
+    );
+
+    if (authErr) {
+      setError(authErr.message || 'Failed to send reset email.');
+      setLoading(false);
+      return;
+    }
+
+    setInfo(`Password reset link sent to ${email.trim()}. Check your inbox.`);
+    setLoading(false);
+  }
+
+  // ── RENDER ─────────────────────────────────────────────────────────────────
+  const pwdStrength = password.length === 0 ? 0 : password.length < 8 ? 1 : password.length < 12 ? 2 : 3;
+  const pwdColors   = ['transparent', '#EF4444', '#F59E0B', '#0E7C4A'];
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes spin   { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes float  { 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+        body { background: #FFFFFF; }
 
-        .auth-root {
+        .sp-root {
           min-height: 100vh;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
           background: #FFFFFF;
+          display: grid;
+          grid-template-columns: 1fr 420px;
           font-family: 'DM Sans', sans-serif;
         }
 
-        /* ── LEFT PANEL ── */
-        .auth-left {
+        /* ── LEFT ── */
+        .sp-left {
           background: #0A0A0A;
+          position: relative;
+          overflow: hidden;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
           padding: 48px 56px;
-          position: relative;
-          overflow: hidden;
         }
-
-        .auth-left::before {
+        .sp-left::before {
           content: '';
-          position: absolute;
-          top: -120px; right: -120px;
-          width: 400px; height: 400px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(201,162,39,0.12) 0%, transparent 70%);
+          position: absolute; inset: 0;
+          background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+          background-size: 28px 28px;
           pointer-events: none;
         }
-
-        .auth-left::after {
-          content: '';
-          position: absolute;
-          bottom: -80px; left: -80px;
-          width: 300px; height: 300px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(201,162,39,0.06) 0%, transparent 70%);
+        .sp-left-glow {
+          position: absolute; inset: 0;
+          background:
+            radial-gradient(circle at 20% 50%, rgba(212,168,71,0.07) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(212,168,71,0.04) 0%, transparent 40%);
           pointer-events: none;
         }
+        .sp-logo { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+        .sp-logo-box { width: 34px; height: 34px; background: #FFFFFF; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        .sp-brand { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.02em; }
+        .sp-left-body { position: relative; z-index: 1; }
+        .sp-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #D4A847; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; }
+        .sp-headline { font-family: 'Playfair Display', serif; font-size: clamp(26px, 3vw, 40px); font-weight: 700; color: #FFFFFF; line-height: 1.18; letter-spacing: -0.03em; margin-bottom: 16px; }
+        .sp-headline em { font-style: italic; color: #D4A847; }
+        .sp-subtext { font-size: 13px; color: #666; line-height: 1.7; max-width: 400px; margin-bottom: 36px; }
+        .sp-features { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 40px; }
+        .sp-feat { padding: 4px 12px; border-radius: 4px; background: rgba(212,168,71,0.1); border: 1px solid rgba(212,168,71,0.2); font-size: 11px; color: #D4A847; font-family: 'JetBrains Mono', monospace; }
+        .sp-stats { display: flex; gap: 28px; flex-wrap: wrap; position: relative; z-index: 1; }
+        .sp-stat-n { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.03em; line-height: 1; }
+        .sp-stat-l { font-size: 11px; color: #555; margin-top: 2px; }
 
-        .auth-logo {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          position: relative;
-          z-index: 1;
-        }
-
-        .auth-logo-mark {
-          width: 38px; height: 38px;
-          border: 1.5px solid rgba(201,162,39,0.6);
-          border-radius: 8px;
-          display: flex; align-items: center; justify-content: center;
-          background: rgba(201,162,39,0.08);
-        }
-
-        .auth-logo-hex {
-          width: 18px; height: 18px;
-        }
-
-        .auth-logo-name {
-          font-family: 'Playfair Display', serif;
-          font-size: 18px;
-          font-weight: 700;
-          color: #FFFFFF;
-          letter-spacing: -0.01em;
-        }
-
-        .auth-left-body {
-          position: relative;
-          z-index: 1;
-        }
-
-        .auth-tagline-eyebrow {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(201,162,39,0.1);
-          border: 1px solid rgba(201,162,39,0.2);
+        /* Floating agent bubbles */
+        .sp-bubble {
+          position: absolute;
+          padding: 7px 14px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.09);
           border-radius: 100px;
-          padding: 5px 14px;
-          margin-bottom: 32px;
-        }
-
-        .auth-tagline-dot {
-          width: 6px; height: 6px;
-          border-radius: 50%;
-          background: #C9A227;
-          animation: blink-dot 2s ease-in-out infinite;
-        }
-
-        @keyframes blink-dot {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-
-        .auth-tagline-text {
           font-size: 11px;
-          font-weight: 600;
-          color: #C9A227;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
+          color: rgba(255,255,255,0.65);
+          white-space: nowrap;
+          backdrop-filter: blur(8px);
+          animation: float 4s ease-in-out infinite;
+          z-index: 0;
         }
 
-        .auth-headline {
-          font-family: 'Playfair Display', serif;
-          font-size: clamp(32px, 3.5vw, 44px);
-          font-weight: 800;
-          color: #FFFFFF;
-          line-height: 1.15;
-          letter-spacing: -0.03em;
-          margin-bottom: 20px;
-        }
-
-        .auth-headline em {
-          font-style: normal;
-          color: #C9A227;
-        }
-
-        .auth-subheadline {
-          font-size: 15px;
-          color: rgba(255,255,255,0.5);
-          line-height: 1.7;
-          max-width: 360px;
-          margin-bottom: 48px;
-        }
-
-        /* Pipeline visualization */
-        .auth-pipeline {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-          margin-bottom: 48px;
-        }
-
-        .auth-pipeline-step {
-          display: flex;
-          align-items: flex-start;
-          gap: 16px;
-          padding: 16px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
-          opacity: ${mounted ? 1 : 0};
-          transition: opacity 0.6s ease;
-        }
-
-        .auth-pipeline-step:last-child { border-bottom: none; }
-
-        .auth-step-num {
-          width: 28px; height: 28px;
-          border-radius: 6px;
-          background: rgba(201,162,39,0.12);
-          border: 1px solid rgba(201,162,39,0.25);
-          display: flex; align-items: center; justify-content: center;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          font-weight: 500;
-          color: #C9A227;
-          flex-shrink: 0;
-          margin-top: 2px;
-        }
-
-        .auth-step-content {}
-        .auth-step-title {
-          font-size: 13px;
-          font-weight: 600;
-          color: #FFFFFF;
-          margin-bottom: 3px;
-        }
-        .auth-step-desc {
-          font-size: 12px;
-          color: rgba(255,255,255,0.4);
-          line-height: 1.5;
-        }
-
-        /* Stats */
-        .auth-stats {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 1px;
-          background: rgba(255,255,255,0.06);
-          border: 1px solid rgba(255,255,255,0.06);
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .auth-stat {
-          background: rgba(255,255,255,0.02);
-          padding: 16px;
-          text-align: center;
-        }
-
-        .auth-stat-value {
-          font-family: 'Playfair Display', serif;
-          font-size: 22px;
-          font-weight: 700;
-          color: #C9A227;
-          display: block;
-          margin-bottom: 3px;
-        }
-
-        .auth-stat-label {
-          font-size: 10px;
-          color: rgba(255,255,255,0.3);
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          font-weight: 500;
-        }
-
-        /* ── RIGHT PANEL ── */
-        .auth-right {
+        /* ── RIGHT — FORM ── */
+        .sp-right {
+          background: #FFFFFF;
           display: flex;
           flex-direction: column;
           justify-content: center;
-          padding: 64px 72px;
-          background: #FFFFFF;
+          padding: 48px 44px;
+          border-left: 1px solid #E8E8E8;
+          animation: fadeUp 0.4s ease both;
         }
 
-        .auth-form-header {
-          margin-bottom: 40px;
-        }
-
-        .auth-form-back {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 12px;
-          font-weight: 500;
-          color: #8C8C8C;
-          text-decoration: none;
-          margin-bottom: 32px;
-          cursor: pointer;
-          transition: color 0.2s;
-          border: none;
-          background: none;
-          padding: 0;
-        }
-        .auth-form-back:hover { color: #0A0A0A; }
-
-        .auth-form-title {
-          font-family: 'Playfair Display', serif;
-          font-size: 32px;
-          font-weight: 800;
-          color: #0A0A0A;
-          letter-spacing: -0.03em;
-          margin-bottom: 8px;
-          line-height: 1.2;
-        }
-
-        .auth-form-subtitle {
-          font-size: 14px;
-          color: #8C8C8C;
-          line-height: 1.6;
-        }
-
-        /* Tab switcher */
-        .auth-tabs {
+        /* Mode tabs */
+        .sp-tabs {
           display: flex;
           background: #F5F5F5;
           border-radius: 10px;
           padding: 4px;
-          margin-bottom: 32px;
-          gap: 4px;
+          margin-bottom: 28px;
+          gap: 3px;
         }
-
-        .auth-tab {
+        .sp-tab {
           flex: 1;
-          padding: 10px;
+          padding: 9px;
           border-radius: 7px;
           border: none;
-          background: transparent;
           font-family: 'DM Sans', sans-serif;
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.18s;
+          background: transparent;
           color: #8C8C8C;
         }
-
-        .auth-tab.active {
+        .sp-tab.active {
           background: #FFFFFF;
           color: #0A0A0A;
           box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05);
         }
 
-        /* Form */
-        .auth-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
+        /* Form header */
+        .sp-form-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #0A0A0A; letter-spacing: -0.03em; margin-bottom: 5px; }
+        .sp-form-sub   { font-size: 13px; color: #8C8C8C; margin-bottom: 24px; line-height: 1.55; }
 
-        .auth-field {
-          display: flex;
-          flex-direction: column;
-          gap: 7px;
-        }
-
-        .auth-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #0A0A0A;
-          letter-spacing: 0.02em;
-          text-transform: uppercase;
-        }
-
-        .auth-input-wrap {
-          position: relative;
-        }
-
-        .auth-input {
-          width: 100%;
-          padding: 13px 16px;
+        /* Fields */
+        .sp-form { display: flex; flex-direction: column; gap: 14px; }
+        .sp-field { display: flex; flex-direction: column; gap: 5px; }
+        .sp-label { font-size: 11px; font-weight: 700; color: #0A0A0A; text-transform: uppercase; letter-spacing: 0.06em; }
+        .sp-input {
+          padding: 11px 14px;
           background: #FFFFFF;
           border: 1.5px solid #E8E8E8;
-          border-radius: 10px;
-          font-family: 'DM Sans', sans-serif;
+          border-radius: 9px;
           font-size: 14px;
           color: #0A0A0A;
+          font-family: 'DM Sans', sans-serif;
           outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          -webkit-appearance: none;
+          width: 100%;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
+        .sp-input::placeholder { color: #BCBCBC; }
+        .sp-input:focus { border-color: #0A0A0A; box-shadow: 0 0 0 3px rgba(10,10,10,0.06); }
+        .sp-input.err   { border-color: #EF4444; }
 
-        .auth-input::placeholder { color: #BCBCBC; }
+        /* Password wrapper */
+        .sp-pwd-wrap { position: relative; }
+        .sp-pwd-eye  { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 14px; color: #BCBCBC; padding: 4px; }
 
-        .auth-input:focus {
-          border-color: #0A0A0A;
-          box-shadow: 0 0 0 3px rgba(10,10,10,0.06);
-        }
-
-        .auth-input.has-toggle { padding-right: 48px; }
-
-        .auth-pass-toggle {
-          position: absolute;
-          right: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          cursor: pointer;
-          color: #8C8C8C;
-          font-size: 14px;
-          padding: 4px;
-          transition: color 0.2s;
-          display: flex; align-items: center;
-        }
-        .auth-pass-toggle:hover { color: #0A0A0A; }
-
-        /* Messages */
-        .auth-error {
-          background: #FEF2F2;
-          border: 1px solid #FCA5A5;
-          border-radius: 8px;
-          padding: 11px 14px;
-          font-size: 13px;
-          color: #DC2626;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .auth-success {
-          background: #F0FDF4;
-          border: 1px solid #86EFAC;
-          border-radius: 8px;
-          padding: 11px 14px;
-          font-size: 13px;
-          color: #15803D;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
+        /* Alerts */
+        .sp-error { background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #DC2626; line-height: 1.5; }
+        .sp-info  { background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #15803D; line-height: 1.5; }
 
         /* Submit */
-        .auth-submit {
-          background: #0A0A0A;
-          border: none;
-          border-radius: 10px;
-          padding: 15px 24px;
-          color: #FFFFFF;
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: -0.01em;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          margin-top: 4px;
+        .sp-submit {
+          background: #0A0A0A; border: none; border-radius: 9px;
+          padding: 13px 20px; font-size: 14px; font-weight: 700;
+          color: #FFFFFF; cursor: pointer; font-family: 'DM Sans', sans-serif;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          transition: all 0.18s; width: 100%; margin-top: 4px; letter-spacing: -0.01em;
         }
+        .sp-submit:hover:not(:disabled) { background: #1a1a1a; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(10,10,10,0.18); }
+        .sp-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .auth-submit:hover:not(:disabled) {
-          background: #1a1a1a;
-          transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(10,10,10,0.2);
+        .sp-link {
+          background: none; border: none; font-size: 13px; font-weight: 700;
+          color: #0A0A0A; cursor: pointer; font-family: 'DM Sans', sans-serif;
+          text-decoration: underline; text-underline-offset: 2px; padding: 0;
         }
+        .sp-link:hover { opacity: 0.7; }
 
-        .auth-submit:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+        .sp-forgot {
+          background: none; border: none; font-size: 12px; color: #8C8C8C;
+          cursor: pointer; font-family: 'DM Sans', sans-serif;
+          text-decoration: underline; text-underline-offset: 2px; padding: 0;
         }
+        .sp-forgot:hover { color: #0A0A0A; }
 
-        .auth-submit-spinner {
-          width: 15px; height: 15px;
-          border-radius: 50%;
-          border: 2px solid rgba(255,255,255,0.3);
-          border-top-color: #FFFFFF;
-          animation: spin 0.7s linear infinite;
-          flex-shrink: 0;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .sp-row { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: #8C8C8C; font-family: 'DM Sans', sans-serif; margin-top: 18px; }
 
-        .auth-divider {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          margin: 4px 0;
-        }
-        .auth-divider-line {
-          flex: 1;
-          height: 1px;
-          background: #E8E8E8;
-        }
-        .auth-divider-text {
-          font-size: 11px;
-          color: #BCBCBC;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-        }
+        .sp-terms { font-size: 11px; color: #BCBCBC; text-align: center; line-height: 1.6; margin-top: 6px; }
 
-        .auth-footer-text {
-          text-align: center;
-          font-size: 12px;
-          color: #8C8C8C;
-          line-height: 1.6;
-          margin-top: 8px;
-        }
-
-        .auth-link {
-          color: #0A0A0A;
-          font-weight: 600;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-          cursor: pointer;
-          border: none;
-          background: none;
-          font-size: inherit;
-          font-family: inherit;
-        }
-
-        /* Free badge */
-        .auth-free-badge {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: #F5F5F5;
-          border-radius: 8px;
-          padding: 10px 14px;
-          margin-top: 4px;
-        }
-
-        .auth-free-dot {
-          width: 7px; height: 7px;
-          border-radius: 50%;
-          background: #0E7C4A;
-          flex-shrink: 0;
-        }
-
-        .auth-free-text {
-          font-size: 12px;
-          color: #5C5C5C;
-          line-height: 1.4;
-        }
-
-        .auth-free-text strong {
-          color: #0A0A0A;
-          font-weight: 600;
-        }
-
-        /* Responsive */
-        @media (max-width: 900px) {
-          .auth-root { grid-template-columns: 1fr; }
-          .auth-left { display: none; }
-          .auth-right { padding: 48px 32px; }
-        }
-
-        @media (max-width: 480px) {
-          .auth-right { padding: 40px 24px; }
-          .auth-form-title { font-size: 26px; }
+        @media (max-width: 860px) {
+          .sp-root  { grid-template-columns: 1fr; }
+          .sp-left  { display: none; }
+          .sp-right { padding: 40px 24px; min-height: 100vh; }
         }
       `}</style>
 
-      <div className="auth-root">
+      <div className="sp-root">
 
-        {/* ── LEFT: Brand panel ── */}
-        <div className="auth-left">
-          <div className="auth-logo">
-            <div className="auth-logo-mark">
-              <svg className="auth-logo-hex" viewBox="0 0 20 20" fill="none">
-                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#C9A227" strokeWidth="1.4" fill="none"/>
-                <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#C9A227" fillOpacity="0.15"/>
+        {/* ── LEFT PANEL ── */}
+        <div className="sp-left">
+          <div className="sp-left-glow" />
+
+          {/* Floating bubbles */}
+          {[
+            { label: '📡 Trend Spy',         top: '14%', left: '10%', delay: '0s'   },
+            { label: '🥊 Title Battle',       top: '12%', left: '60%', delay: '0.5s' },
+            { label: '🔬 Competitor Autopsy', top: '55%', left: '6%',  delay: '1s'   },
+            { label: '💰 Monetise Coach',     top: '60%', left: '58%', delay: '1.4s' },
+            { label: '🌏 Script Localiser',   top: '80%', left: '38%', delay: '0.7s' },
+            { label: '⚡ Hook Upgrader',      top: '35%', left: '72%', delay: '1.2s' },
+          ].map((b, i) => (
+            <div key={i} className="sp-bubble" style={{ top: b.top, left: b.left, animationDelay: b.delay, animationDuration: `${3.5 + i * 0.3}s` }}>
+              {b.label}
+            </div>
+          ))}
+
+          <div className="sp-logo">
+            <div className="sp-logo-box">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#0A0A0A" strokeWidth="1.5" fill="none"/>
+                <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#0A0A0A" fillOpacity="0.2"/>
               </svg>
             </div>
-            <span className="auth-logo-name">Studio AI</span>
+            <span className="sp-brand">Studio AI</span>
           </div>
 
-          <div className="auth-left-body">
-            <div className="auth-tagline-eyebrow">
-              <span className="auth-tagline-dot" />
-              <span className="auth-tagline-text">India's #1 Content OS</span>
-            </div>
-
-            <h2 className="auth-headline">
-              Your next 7 videos.<br />
-              <em>Written. Ready.</em><br />
-              In 90 seconds.
+          <div className="sp-left-body">
+            <p className="sp-eyebrow">India's Creator OS</p>
+            <h2 className="sp-headline">
+              From <em>idea</em><br/>to full content pack<br/>in 90 seconds.
             </h2>
-
-            <p className="auth-subheadline">
-              Three AI agents — Research, Script, Distribute — working in sequence to produce a complete content pack, every time.
+            <p className="sp-subtext">
+              13 AI agents work in sequence — researching trends, writing word-for-word scripts, and building your entire distribution strategy automatically.
             </p>
-
-            <div className="auth-pipeline">
-              {[
-                { n:'01', title:'Research Agent', desc:'Scans trending topics, selects your best hook and angle' },
-                { n:'02', title:'Creator Agent',  desc:'Writes a full script with scene-by-scene production direction' },
-                { n:'03', title:'Publisher Agent',desc:'YouTube SEO, Instagram captions, 7-day posting plan' },
-              ].map(step => (
-                <div className="auth-pipeline-step" key={step.n}>
-                  <div className="auth-step-num">{step.n}</div>
-                  <div className="auth-step-content">
-                    <div className="auth-step-title">{step.title}</div>
-                    <div className="auth-step-desc">{step.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="auth-stats">
-              {[
-                { v:'13',   l:'AI Agents'  },
-                { v:'90s',  l:'Full Pack'  },
-                { v:'₹0',   l:'To Start'   },
-              ].map(s => (
-                <div className="auth-stat" key={s.l}>
-                  <span className="auth-stat-value">{s.v}</span>
-                  <span className="auth-stat-label">{s.l}</span>
-                </div>
+            <div className="sp-features">
+              {['Script', 'Scene Breakdown', 'Hook Psychology', 'YouTube SEO', 'Social Captions', '7-Day Plan'].map(f => (
+                <span key={f} className="sp-feat">{f}</span>
               ))}
             </div>
           </div>
 
-          <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.18)', position:'relative', zIndex:1, fontFamily:"'JetBrains Mono', monospace" }}>
-            studio-ai.in · Confidential
-          </p>
+          <div className="sp-stats">
+            {[['13', 'AI Agents'], ['90s', 'Full Pipeline'], ['₹399', 'Pro / month'], ['Free', 'To Start']].map(([n, l]) => (
+              <div key={l}>
+                <div className="sp-stat-n">{n}</div>
+                <div className="sp-stat-l">{l}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* ── RIGHT: Auth form ── */}
-        <div className="auth-right">
-          <div style={{ maxWidth: '400px', width: '100%', margin: '0 auto' }}>
+        {/* ── RIGHT PANEL — FORM ── */}
+        <div className="sp-right">
 
-            <div className="auth-form-header">
-              <button className="auth-form-back" onClick={() => router.push('/')}>
-                ← Back to home
-              </button>
-
-              <h1 className="auth-form-title">
-                {mode === 'signup' ? 'Create account' : 'Welcome back'}
-              </h1>
-              <p className="auth-form-subtitle">
-                {mode === 'signup'
-                  ? 'Free plan · 3 generations/month · No card required'
-                  : 'Sign in to your Studio AI workspace'}
-              </p>
-            </div>
-
-            {/* Tab switcher */}
-            <div className="auth-tabs">
-              <button
-                className={`auth-tab ${mode === 'signup' ? 'active' : ''}`}
-                onClick={() => { setMode('signup'); setError(''); setSuccess(''); }}
-              >
-                Sign Up
-              </button>
-              <button
-                className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
-                onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
-              >
-                Log In
-              </button>
-            </div>
-
-            <form className="auth-form" onSubmit={handleSubmit}>
-              {mode === 'signup' && (
-                <div className="auth-field">
-                  <label className="auth-label">Full Name</label>
-                  <input
-                    className="auth-input"
-                    type="text"
-                    placeholder="Arjun Sharma"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    required
-                    disabled={loading}
-                    autoComplete="name"
-                  />
-                </div>
-              )}
-
-              <div className="auth-field">
-                <label className="auth-label">Email Address</label>
-                <input
-                  className="auth-input"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                  autoComplete="email"
-                />
-              </div>
-
-              <div className="auth-field">
-                <label className="auth-label">Password</label>
-                <div className="auth-input-wrap">
-                  <input
-                    className="auth-input has-toggle"
-                    type={showPass ? 'text' : 'password'}
-                    placeholder={mode === 'signup' ? 'Minimum 6 characters' : '••••••••'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    disabled={loading}
-                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                  />
-                  <button
-                    type="button"
-                    className="auth-pass-toggle"
-                    onClick={() => setShowPass(!showPass)}
-                    aria-label={showPass ? 'Hide password' : 'Show password'}
-                  >
-                    {showPass ? '👁' : '○'}
+          {/* ── FORGOT PASSWORD ── */}
+          {mode === 'forgot' && (
+            <>
+              <h1 className="sp-form-title">Reset password</h1>
+              <p className="sp-form-sub">Enter your email and we'll send a reset link.</p>
+              <form className="sp-form" onSubmit={handleForgot}>
+                {error && <div className="sp-error">⚠ {error}</div>}
+                {info  && <div className="sp-info">✓ {info}</div>}
+                {!info && (
+                  <div className="sp-field">
+                    <label className="sp-label">Email address</label>
+                    <input className={`sp-input${error ? ' err' : ''}`} type="email" placeholder="you@example.com" value={email} onChange={e => { setEmail(e.target.value); clearAlerts(); }} required autoFocus />
+                  </div>
+                )}
+                {!info && (
+                  <button type="submit" className="sp-submit" disabled={loading}>
+                    {loading ? <><Spinner />Sending…</> : 'Send reset link →'}
                   </button>
-                </div>
+                )}
+              </form>
+              <div className="sp-row">
+                <button className="sp-link" onClick={() => switchMode('login')}>← Back to sign in</button>
+              </div>
+            </>
+          )}
+
+          {/* ── LOGIN ── */}
+          {mode === 'login' && (
+            <>
+              {/* Tab switcher */}
+              <div className="sp-tabs">
+                <button type="button" className={`sp-tab${mode === 'signup' ? ' active' : ''}`} onClick={() => switchMode('signup')}>Sign Up</button>
+                <button type="button" className={`sp-tab${mode === 'login'  ? ' active' : ''}`} onClick={() => switchMode('login')}>Sign In</button>
               </div>
 
-              {error   && <div className="auth-error">⚠ {error}</div>}
-              {success && <div className="auth-success">✓ {success}</div>}
+              <h1 className="sp-form-title">Welcome back</h1>
+              <p className="sp-form-sub">Sign in to your Studio AI account.</p>
 
-              <button
-                type="submit"
-                className="auth-submit"
-                disabled={loading}
-              >
-                {loading
-                  ? <><div className="auth-submit-spinner" />Please wait…</>
-                  : mode === 'signup'
-                    ? <>Create Free Account →</>
-                    : <>Sign In →</>
-                }
-              </button>
+              <form className="sp-form" onSubmit={handleLogin}>
+                {error && <div className="sp-error">⚠ {error}</div>}
+                {info  && <div className="sp-info">✓ {info}</div>}
 
-              {mode === 'signup' && (
-                <div className="auth-free-badge">
-                  <div className="auth-free-dot" />
-                  <p className="auth-free-text">
-                    <strong>Free forever</strong> — 3 full content packs per month.
-                    No credit card. Cancel anytime.
-                  </p>
+                <div className="sp-field">
+                  <label className="sp-label">Email address</label>
+                  <input
+                    className={`sp-input${error ? ' err' : ''}`}
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); clearAlerts(); }}
+                    required
+                    autoFocus
+                    autoComplete="email"
+                  />
                 </div>
+
+                <div className="sp-field">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label className="sp-label">Password</label>
+                    <button type="button" className="sp-forgot" onClick={() => switchMode('forgot')}>Forgot password?</button>
+                  </div>
+                  <div className="sp-pwd-wrap">
+                    <input
+                      className={`sp-input${error ? ' err' : ''}`}
+                      type={showPwd ? 'text' : 'password'}
+                      placeholder="Your password"
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); clearAlerts(); }}
+                      required
+                      autoComplete="current-password"
+                      style={{ paddingRight: 42 }}
+                    />
+                    <button type="button" className="sp-pwd-eye" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}>
+                      {showPwd ? '🙈' : '👁'}
+                    </button>
+                  </div>
+                </div>
+
+                <button type="submit" className="sp-submit" disabled={loading}>
+                  {loading ? <><Spinner />Signing in…</> : 'Sign in →'}
+                </button>
+              </form>
+
+              <div className="sp-row">
+                Don't have an account?
+                <button className="sp-link" onClick={() => switchMode('signup')}>Create one free</button>
+              </div>
+            </>
+          )}
+
+          {/* ── SIGN UP ── */}
+          {mode === 'signup' && (
+            <>
+              {/* Tab switcher */}
+              <div className="sp-tabs">
+                <button type="button" className={`sp-tab${mode === 'signup' ? ' active' : ''}`} onClick={() => switchMode('signup')}>Sign Up</button>
+                <button type="button" className={`sp-tab${mode === 'login'  ? ' active' : ''}`} onClick={() => switchMode('login')}>Sign In</button>
+              </div>
+
+              <h1 className="sp-form-title">Create account</h1>
+              <p className="sp-form-sub">Free plan — 3 generations / month. No card needed.</p>
+
+              {info ? (
+                <>
+                  <div className="sp-info">✓ {info}</div>
+                  <div className="sp-row" style={{ marginTop: 20 }}>
+                    <button className="sp-link" onClick={() => switchMode('login')}>→ Go to sign in</button>
+                  </div>
+                </>
+              ) : (
+                <form className="sp-form" onSubmit={handleSignup}>
+                  {error && <div className="sp-error">⚠ {error}</div>}
+
+                  <div className="sp-field">
+                    <label className="sp-label">Full name</label>
+                    <input
+                      className="sp-input"
+                      type="text"
+                      placeholder="Arjun Kumar"
+                      value={name}
+                      onChange={e => { setName(e.target.value); clearAlerts(); }}
+                      required
+                      autoFocus
+                      autoComplete="name"
+                    />
+                  </div>
+
+                  <div className="sp-field">
+                    <label className="sp-label">Email address</label>
+                    <input
+                      className="sp-input"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={e => { setEmail(e.target.value); clearAlerts(); }}
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  <div className="sp-field">
+                    <label className="sp-label">
+                      Password
+                      <span style={{ color: '#BCBCBC', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10, marginLeft: 6 }}>(min 8 characters)</span>
+                    </label>
+                    <div className="sp-pwd-wrap">
+                      <input
+                        className="sp-input"
+                        type={showPwd ? 'text' : 'password'}
+                        placeholder="Create a strong password"
+                        value={password}
+                        onChange={e => { setPassword(e.target.value); clearAlerts(); }}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        style={{ paddingRight: 42 }}
+                      />
+                      <button type="button" className="sp-pwd-eye" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}>
+                        {showPwd ? '🙈' : '👁'}
+                      </button>
+                    </div>
+                    {/* Password strength bar */}
+                    {password.length > 0 && (
+                      <div style={{ height: 3, background: '#F0F0F0', borderRadius: 2, overflow: 'hidden', marginTop: 4 }}>
+                        <div style={{
+                          height: '100%', borderRadius: 2,
+                          width: `${[0, 33, 66, 100][pwdStrength]}%`,
+                          background: pwdColors[pwdStrength],
+                          transition: 'all 0.3s',
+                        }} />
+                      </div>
+                    )}
+                  </div>
+
+                  <button type="submit" className="sp-submit" disabled={loading}>
+                    {loading ? <><Spinner />Creating account…</> : 'Create free account →'}
+                  </button>
+
+                  <p className="sp-terms">By signing up you agree to our Terms of Service and Privacy Policy.</p>
+                </form>
               )}
-
-              <div className="auth-divider">
-                <div className="auth-divider-line" />
-                <span className="auth-divider-text">or</span>
-                <div className="auth-divider-line" />
-              </div>
-
-              <p className="auth-footer-text">
-                {mode === 'signup'
-                  ? <>Already have an account?{' '}
-                      <button className="auth-link" onClick={() => { setMode('login'); setError(''); }}>
-                        Sign in
-                      </button></>
-                  : <>New to Studio AI?{' '}
-                      <button className="auth-link" onClick={() => { setMode('signup'); setError(''); }}>
-                        Create free account
-                      </button></>
-                }
-              </p>
-            </form>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </>
+  );
+}
+
+function Spinner() {
+  return (
+    <span style={{
+      width: 14, height: 14, borderRadius: '50%',
+      border: '2px solid rgba(255,255,255,0.3)',
+      borderTopColor: '#fff',
+      display: 'inline-block',
+      animation: 'spin 0.7s linear infinite',
+      flexShrink: 0,
+    }} />
   );
 }

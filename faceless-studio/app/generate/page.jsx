@@ -3,58 +3,58 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
-const PLATFORMS     = ['YouTube','Instagram Reels','TikTok','Podcast','Blog','YouTube Shorts'];
+const PLATFORMS = ['YouTube', 'Instagram Reels', 'TikTok', 'Podcast', 'Blog', 'YouTube Shorts'];
 const CREATOR_TYPES = [
-  { value:'general',    label:'General Creator'  },
-  { value:'educator',   label:'Educator'         },
-  { value:'coach',      label:'Coach / Mentor'   },
-  { value:'entertainer',label:'Entertainer'      },
-  { value:'podcaster',  label:'Podcaster'        },
-  { value:'blogger',    label:'Blogger / Writer' },
-  { value:'agency',     label:'Agency / Brand'   },
+  { value: 'general', label: 'General Creator' },
+  { value: 'educator', label: 'Educator' },
+  { value: 'coach', label: 'Coach / Mentor' },
+  { value: 'entertainer', label: 'Entertainer' },
+  { value: 'podcaster', label: 'Podcaster' },
+  { value: 'blogger', label: 'Blogger / Writer' },
+  { value: 'agency', label: 'Agency / Brand' },
 ];
-const LANGUAGES = ['English','Hindi','Tamil','Telugu','Kannada','Marathi','Bengali','Gujarati','Malayalam','Punjabi','Spanish','French'];
-const TONES     = ['Educational','Conversational','Motivational','Entertaining','Authoritative','Storytelling'];
+const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Marathi', 'Bengali', 'Gujarati', 'Malayalam', 'Punjabi', 'Spanish', 'French'];
+const TONES = ['Educational', 'Conversational', 'Motivational', 'Entertaining', 'Authoritative', 'Storytelling'];
 
 const AGENTS = [
-  { id:'research', num:'01', label:'Research',  desc:'Trends, angles & hook psychology',   color:'#C9A227' },
-  { id:'creator',  num:'02', label:'Script',     desc:'Full script, scenes & retention',    color:'#2563EB' },
-  { id:'publisher',num:'03', label:'Distribute', desc:'SEO, social captions & 7-day plan',  color:'#0E7C4A' },
+  { id: 'research', num: '01', label: 'Research', desc: 'Trends, angles & hook psychology', color: '#C9A227' },
+  { id: 'creator', num: '02', label: 'Script', desc: 'Full script, scenes & retention', color: '#2563EB' },
+  { id: 'publisher', num: '03', label: 'Distribute', desc: 'SEO, social captions & 7-day plan', color: '#0E7C4A' },
 ];
 
 // Real agent timing based on actual pipeline
 const AGENT_LOG_SEQUENCES = {
-  research:  ['Fetching real-time trend signals...', 'Analysing niche competition gaps...', 'Selecting optimal hook trigger...', '✓ Research complete'],
-  creator:   ['Applying creator DNA to script...', 'Writing word-for-word voiceover...', 'Building scene-by-scene breakdown...', '✓ Script complete'],
+  research: ['Fetching real-time trend signals...', 'Analysing niche competition gaps...', 'Selecting optimal hook trigger...', '✓ Research complete'],
+  creator: ['Applying creator DNA to script...', 'Writing word-for-word voiceover...', 'Building scene-by-scene breakdown...', '✓ Script complete'],
   publisher: ['Generating YouTube SEO assets...', 'Writing social captions...', 'Building 7-day content plan...', '✓ Distribution pack ready'],
 };
 
 export default function GeneratePage() {
-  const router   = useRouter();
+  const router = useRouter();
   const supabase = getSupabaseBrowser();
 
-  const [user,        setUser]        = useState(null);
-  const [usage,       setUsage]       = useState(null);
-  const [dna,         setDna]         = useState(null);
+  const [user, setUser] = useState(null);
+  const [usage, setUsage] = useState(null);
+  const [dna, setDna] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
-  const [niche,       setNiche]       = useState('');
-  const [platform,    setPlatform]    = useState('YouTube');
+  const [niche, setNiche] = useState('');
+  const [platform, setPlatform] = useState('YouTube');
   const [creatorType, setCreatorType] = useState('general');
-  const [language,    setLanguage]    = useState('English');
-  const [tone,        setTone]        = useState('Educational');
+  const [language, setLanguage] = useState('English');
+  const [tone, setTone] = useState('Educational');
   const [creatorMode, setCreatorMode] = useState('faceless');
-  const [running,     setRunning]     = useState(false);
+  const [running, setRunning] = useState(false);
   const [agentStatus, setAgentStatus] = useState({});
-  const [currentAgent,setCurrentAgent]= useState(null);
-  const [elapsed,     setElapsed]     = useState(0);
-  const [error,       setError]       = useState('');
-  const [logs,        setLogs]        = useState([]);
-  const [streak,      setStreak]      = useState(0);
+  const [currentAgent, setCurrentAgent] = useState(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [error, setError] = useState('');
+  const [logs, setLogs] = useState([]);
+  const [streak, setStreak] = useState(0);
 
-  const timerRef   = useRef(null);
-  const startRef   = useRef(null);
-  const logsRef    = useRef(null);
-  const logTimers  = useRef([]);
+  const timerRef = useRef(null);
+  const startRef = useRef(null);
+  const logsRef = useRef(null);
+  const logTimers = useRef([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -85,7 +85,7 @@ export default function GeneratePage() {
 
   function pushLog(msg, type = 'info') {
     setLogs(prev => {
-      const next = [...prev, { t: new Date().toLocaleTimeString('en', { hour12:false }), msg, type }];
+      const next = [...prev, { t: new Date().toLocaleTimeString('en', { hour12: false }), msg, type }];
       setTimeout(() => { if (logsRef.current) logsRef.current.scrollTop = logsRef.current.scrollHeight; }, 40);
       return next;
     });
@@ -118,7 +118,7 @@ export default function GeneratePage() {
 
     clearLogTimers();
     setError(''); setRunning(true); setLogs([]);
-    setAgentStatus({ research:'running', creator:'idle', publisher:'idle' });
+    setAgentStatus({ research: 'running', creator: 'idle', publisher: 'idle' });
     setCurrentAgent('research');
     startTimer();
     pushLog('Pipeline initialised', 'system');
@@ -128,10 +128,10 @@ export default function GeneratePage() {
     if (!session) { router.replace('/login'); return; }
 
     try {
-      const res  = await fetch('/api/generate', {
-        method:  'POST',
-        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
-        body:    JSON.stringify({ niche:niche.trim(), platform, creatorType, language, tone, creatorMode }),
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ niche: niche.trim(), platform, creatorType, language, tone, creatorMode }),
       });
       const json = await res.json();
 
@@ -141,7 +141,7 @@ export default function GeneratePage() {
 
       if (!res.ok || !json.success) {
         stopTimer(); setRunning(false);
-        setAgentStatus({ research: json.meta?.stage === 'research' ? 'error' : 'done', creator: json.meta?.stage === 'creator' ? 'error' : 'idle', publisher:'idle' });
+        setAgentStatus({ research: json.meta?.stage === 'research' ? 'error' : 'done', creator: json.meta?.stage === 'creator' ? 'error' : 'idle', publisher: 'idle' });
         setCurrentAgent(null);
         pushLog(`Error: ${json.error || 'Generation failed'}`, 'error');
         setError(json.error || 'Generation failed. Please try again.');
@@ -151,26 +151,26 @@ export default function GeneratePage() {
       const dur = json.meta?.agent_durations || {};
 
       // Sequentially reveal agent completions
-      pushLog(`✓ Research complete (${((dur.research||0)/1000).toFixed(1)}s) — ${json.research?.trending_angles?.length || 0} angles found`, 'success');
-      setAgentStatus({ research:'done', creator:'running', publisher:'idle' });
+      pushLog(`✓ Research complete (${((dur.research || 0) / 1000).toFixed(1)}s) — ${json.research?.trending_angles?.length || 0} angles found`, 'success');
+      setAgentStatus({ research: 'done', creator: 'running', publisher: 'idle' });
       setCurrentAgent('creator');
       startAgentLogs('creator', 100);
 
       await new Promise(r => setTimeout(r, 400));
 
       clearLogTimers();
-      pushLog(`✓ Script complete — ${json.creator?.word_count || 0} words, ${json.creator?.scenes?.length || 0} scenes (${((dur.creator||0)/1000).toFixed(1)}s)`, 'success');
-      setAgentStatus({ research:'done', creator:'done', publisher:'running' });
+      pushLog(`✓ Script complete — ${json.creator?.word_count || 0} words, ${json.creator?.scenes?.length || 0} scenes (${((dur.creator || 0) / 1000).toFixed(1)}s)`, 'success');
+      setAgentStatus({ research: 'done', creator: 'done', publisher: 'running' });
       setCurrentAgent('publisher');
       startAgentLogs('publisher', 100);
 
       await new Promise(r => setTimeout(r, 400));
 
       clearLogTimers();
-      pushLog(`✓ Distribution pack complete (${((dur.publisher||0)/1000).toFixed(1)}s)`, 'success');
-      setAgentStatus({ research:'done', creator:'done', publisher:'done' });
+      pushLog(`✓ Distribution pack complete (${((dur.publisher || 0) / 1000).toFixed(1)}s)`, 'success');
+      setAgentStatus({ research: 'done', creator: 'done', publisher: 'done' });
       setCurrentAgent(null);
-      pushLog(`Pipeline finished in ${((json.meta?.total_duration_ms||0)/1000).toFixed(1)}s`, 'system');
+      pushLog(`Pipeline finished in ${((json.meta?.total_duration_ms || 0) / 1000).toFixed(1)}s`, 'system');
       if (json.dna?.creator_mode) pushLog(`Creator mode: ${json.dna.creator_mode}`, 'system');
       stopTimer();
 
@@ -186,7 +186,7 @@ export default function GeneratePage() {
   }
 
   if (pageLoading) return (
-    <div style={{ minHeight:'100vh', background:'#FFFFFF', display:'flex', alignItems:'center', justifyContent:'center' }}>
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Spinner />
     </div>
   );
@@ -218,11 +218,11 @@ export default function GeneratePage() {
         .gen-btn-outline:hover { border-color:#0A0A0A; color:#0A0A0A; }
         .gen-body { display:flex; flex:1; min-height:0; }
         .gen-rail { width:280px; flex-shrink:0; border-right:1px solid #E8E8E8; background:#FAFAFA; padding:28px 24px; display:flex; flex-direction:column; gap:32px; overflow-y:auto; }
-        .gen-rail-label { font-size:10px; font-weight:700; color:#BCBCBC; text-transform:uppercase; letter-spacing:0.1em; margin:0; }
+        .gen-rail-label { font-size:10px; font-weight:700; color:#000000; text-transform:uppercase; letter-spacing:0.1em; margin:0; }
         .gen-agents { display:flex; flex-direction:column; gap:0; }
         .gen-agent-row { display:flex; align-items:flex-start; gap:14px; padding-bottom:24px; position:relative; }
         .gen-agent-connector { position:absolute; left:15px; top:38px; width:1px; height:calc(100% - 14px); background:#E8E8E8; transition:background 0.4s; }
-        .gen-agent-connector.done { background:#0E7C4A; }
+        .gen-agent-connector.done { background:#00000; }
         .gen-agent-badge { width:32px; height:32px; border-radius:8px; border:1.5px solid #E8E8E8; background:#FFFFFF; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:#BCBCBC; flex-shrink:0; transition:all 0.3s; position:relative; z-index:1; }
         .gen-agent-badge.running { border-color:#C9A227; background:#FFF9EB; color:#C9A227; }
         .gen-agent-badge.done { border-color:#0E7C4A; background:#F0FDF4; color:#0E7C4A; font-size:13px; }
@@ -233,35 +233,139 @@ export default function GeneratePage() {
         .gen-agent-name.running { color:#C9A227; }
         .gen-agent-name.done { color:#0E7C4A; }
         .gen-agent-desc { font-size:11px; color:#BCBCBC; line-height:1.5; }
-        .gen-terminal { border:1px solid #E8E8E8; border-radius:10px; overflow:hidden; background:#FAFAFA; flex:1; }
-        .gen-term-header { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid #E8E8E8; background:#FFFFFF; }
-        .gen-term-dot { width:8px; height:8px; border-radius:50%; background:#E8E8E8; flex-shrink:0; }
-        .gen-term-dot.active { background:#C9A227; animation:pulse-ring 1.5s ease infinite; }
-        .gen-term-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:#BCBCBC; flex:1; }
-        .gen-term-timer { font-family:'JetBrains Mono',monospace; font-size:11px; color:#C9A227; font-weight:500; }
-        .gen-term-body { padding:12px; min-height:120px; max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; }
-        .gen-term-body::-webkit-scrollbar { width:3px; }
-        .gen-term-body::-webkit-scrollbar-thumb { background:#E8E8E8; }
-        .gen-term-empty { font-family:'JetBrains Mono',monospace; font-size:11px; color:#BCBCBC; padding:4px 0; }
-        .gen-log-line { display:flex; gap:10px; font-family:'JetBrains Mono',monospace; font-size:10px; line-height:1.6; }
-        .gen-log-ts { color:#BCBCBC; flex-shrink:0; }
-        .gen-log-info { color:#5C5C5C; }
-        .gen-log-success { color:#0E7C4A; }
-        .gen-log-error { color:#DC2626; }
-        .gen-log-agent { color:#2563EB; }
-        .gen-log-system { color:#8C8C8C; }
+        /* ───────── TERMINAL CONTAINER ───────── */
+        .gen-terminal {
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #FFFFFF;
+          box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+        }
+
+        /* ───────── HEADER ───────── */
+        .gen-term-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 16px;
+          border-bottom: 1px solid #F1F5F9;
+          background: #FAFAFA;
+        }
+
+        .gen-term-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #D1D5DB;
+        }
+
+        .gen-term-dot.active {
+          background: #22C55E;
+          box-shadow: 0 0 8px rgba(34,197,94,0.6);
+        }
+
+        /* Title */
+        .gen-term-label {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: #111827; /* BLACK */
+          font-weight: 500;
+        }
+
+        /* Timer */
+        .gen-term-timer {
+          margin-left: auto;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: #2563EB;
+          font-weight: 600;
+        }
+
+        /* ───────── BODY ───────── */
+        .gen-term-body {
+          padding: 14px;
+          min-height: 140px;
+          max-height: 220px;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          background: #FFFFFF;
+        }
+
+        /* Scrollbar */
+        .gen-term-body::-webkit-scrollbar {
+          width: 4px;
+        }
+        .gen-term-body::-webkit-scrollbar-thumb {
+          background: #E5E7EB;
+          border-radius: 4px;
+        }
+
+        /* Empty state */
+        .gen-term-empty {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: #6B7280;
+        }
+
+        /* ───────── LOG LINE ───────── */
+        .gen-log-line {
+          display: flex;
+          gap: 10px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          line-height: 1.6;
+          padding: 6px 8px;
+          border-radius: 6px;
+          transition: background 0.2s;
+        }
+
+        .gen-log-line:hover {
+          background: #F9FAFB;
+        }
+
+        /* Timestamp */
+        .gen-log-ts {
+          color: #9CA3AF;
+          min-width: 60px;
+        }
+
+        /* Message types */
+        .gen-log-info {
+          color: #111827;
+        }
+
+        .gen-log-success {
+          color: #16A34A;
+          font-weight: 500;
+        }
+
+        .gen-log-error {
+          color: #DC2626;
+          font-weight: 500;
+        }
+
+        .gen-log-agent {
+          color: #2563EB;
+          font-weight: 500;
+        }
+
+        .gen-log-system {
+          color: #6B7280;
+        }
         .gen-main { flex:1; overflow-y:auto; display:flex; justify-content:center; padding:56px 40px 100px; }
         .gen-main-inner { width:100%; max-width:540px; }
         .gen-form-header { margin-bottom:40px; }
         .gen-form-eyebrow { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8C8C8C; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
         .gen-form-eyebrow::before { content:''; width:20px; height:1px; background:#C9A227; }
         .gen-form-h1 { font-family:'Playfair Display',serif; font-size:30px; font-weight:800; color:#0A0A0A; letter-spacing:-0.03em; line-height:1.2; margin-bottom:10px; }
-        .gen-form-sub { font-size:14px; color:#8C8C8C; line-height:1.65; font-weight:400; }
+        .gen-form-sub { font-size:14px; color:#0A0A0A; line-height:1.65; font-weight:400; }
         .gen-form { display:flex; flex-direction:column; gap:22px; }
         .gen-field { display:flex; flex-direction:column; gap:7px; }
         .gen-label { font-size:11px; font-weight:700; color:#0A0A0A; text-transform:uppercase; letter-spacing:0.06em; }
         .gen-label-required { color:#C9A227; }
-        .gen-hint { font-size:12px; color:#BCBCBC; line-height:1.5; margin-top:-2px; }
+        .gen-hint { font-size:12px; color:#0A0A0A; line-height:1.5; margin-top:-2px; }
         .gen-input { padding:13px 16px; background:#FFFFFF; border:1.5px solid #E8E8E8; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px; color:#0A0A0A; outline:none; transition:border-color 0.2s,box-shadow 0.2s; width:100%; }
         .gen-input::placeholder { color:#BCBCBC; }
         .gen-input:focus { border-color:#0A0A0A; box-shadow:0 0 0 3px rgba(10,10,10,0.05); }
@@ -290,8 +394,8 @@ export default function GeneratePage() {
           <div className="gen-topbar-left">
             <div className="gen-logo-box">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#FFFFFF" strokeWidth="1.4" fill="none"/>
-                <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#FFFFFF" fillOpacity="0.3"/>
+                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#FFFFFF" strokeWidth="1.4" fill="none" />
+                <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#FFFFFF" fillOpacity="0.3" />
               </svg>
             </div>
             <span className="gen-brand">Studio AI</span>
@@ -318,8 +422,8 @@ export default function GeneratePage() {
                     <div className={`gen-agent-badge ${st}`}>
                       {st === 'running' ? <div className="gen-agent-pulse" />
                         : st === 'done' ? '✓'
-                        : st === 'error' ? '✕'
-                        : a.num}
+                          : st === 'error' ? '✕'
+                            : a.num}
                     </div>
                     <div className="gen-agent-meta">
                       <div className={`gen-agent-name ${st}`}>{a.label}</div>
@@ -340,7 +444,7 @@ export default function GeneratePage() {
               <div className="gen-term-header">
                 <div className={`gen-term-dot ${running ? 'active' : ''}`} />
                 <span className="gen-term-label">{currentAgent ? `${currentAgent} agent` : 'stdout'}</span>
-                {running && <span className="gen-term-timer">{(elapsed/1000).toFixed(1)}s</span>}
+                {running && <span className="gen-term-timer">{(elapsed / 1000).toFixed(1)}s</span>}
               </div>
               <div className="gen-term-body" ref={logsRef}>
                 {logs.length === 0
@@ -453,7 +557,7 @@ export default function GeneratePage() {
                 {usage?.plan === 'free' && (usage?.remaining ?? 1) === 0 && !error && (
                   <div className="gen-limit-warn">
                     ⚠ Monthly limit reached.{' '}
-                    <a href="/dashboard" style={{ color:'#C9A227', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:'600' }}>
+                    <a href="/dashboard" style={{ color: '#C9A227', textDecoration: 'underline', textUnderlineOffset: '2px', fontWeight: '600' }}>
                       Upgrade your plan
                     </a>
                     {' '}to continue.
@@ -488,10 +592,10 @@ export default function GeneratePage() {
 function Spinner({ size = 20, light = false }) {
   return (
     <span style={{
-      width:`${size}px`, height:`${size}px`, borderRadius:'50%',
-      border:`2px solid ${light ? 'rgba(255,255,255,0.25)' : '#E8E8E8'}`,
+      width: `${size}px`, height: `${size}px`, borderRadius: '50%',
+      border: `2px solid ${light ? 'rgba(255,255,255,0.25)' : '#E8E8E8'}`,
       borderTopColor: light ? '#FFFFFF' : '#0A0A0A',
-      display:'inline-block', animation:'spin 0.7s linear infinite', flexShrink:0,
+      display: 'inline-block', animation: 'spin 0.7s linear infinite', flexShrink: 0,
     }} />
   );
 }

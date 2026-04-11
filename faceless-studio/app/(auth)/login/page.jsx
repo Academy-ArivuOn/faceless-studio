@@ -637,6 +637,7 @@ export default function LoginPage() {
 
               <div className="terminal-body">
                 {visibleLines.map((line, i) => {
+                  if (!line) return null;
                   const isLast = i === visibleLines.length - 1;
                   const isComplete = line.text.includes('ready');
                   return (
