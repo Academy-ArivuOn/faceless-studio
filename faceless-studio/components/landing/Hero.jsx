@@ -11,24 +11,24 @@ const NICHES = [
 ]
 
 const DEMO_LINES = [
-  { agent: 'Research', icon: '🔍', color: '#C9A435', text: 'Scanning 2.3M trending topics in Personal Finance India...' },
-  { agent: 'Research', icon: '🔍', color: '#C9A435', text: '✓ Found: "RBI rate cut impact on home loans" — 1.8M views in 24hrs' },
-  { agent: 'Research', icon: '🔍', color: '#C9A435', text: '✓ Hook identified: Loss aversion + specific number = high CTR' },
-  { agent: 'Creator', icon: '✍️', color: '#4A90D9', text: 'Writing hook: "Your EMI is about to change. Here\'s by exactly how much."' },
-  { agent: 'Creator', icon: '✍️', color: '#4A90D9', text: 'Building full script: Hook → Problem → Framework → CTA...' },
-  { agent: 'Creator', icon: '✍️', color: '#4A90D9', text: '✓ Scene 1: Stock footage — family stressed over loan statement' },
-  { agent: 'Creator', icon: '✍️', color: '#4A90D9', text: '✓ Hook psychology: Loss aversion triggers 3.2× more clicks' },
-  { agent: 'Publisher', icon: '🚀', color: '#50C878', text: 'Optimising YouTube title for CTR + SEO...' },
-  { agent: 'Publisher', icon: '🚀', color: '#50C878', text: '✓ Title: "RBI Cut ₹3,000 From Your EMI — But Only If You Do This"' },
-  { agent: 'Publisher', icon: '🚀', color: '#50C878', text: '✓ Instagram caption ready | ✓ TikTok hook ready | ✓ 10 SEO tags' },
-  { agent: 'Done', icon: '✅', color: '#C9A435', text: '🎉 Your complete content pack is ready. 7 videos planned.' },
+  { agent: 'Research', icon: '🔍', color: '#6366F1', text: 'Scanning 2.3M trending topics in Personal Finance India...' },
+  { agent: 'Research', icon: '🔍', color: '#6366F1', text: '✓ Found: "RBI rate cut impact on home loans" — 1.8M views in 24hrs' },
+  { agent: 'Research', icon: '🔍', color: '#6366F1', text: '✓ Hook identified: Loss aversion + specific number = high CTR' },
+  { agent: 'Creator', icon: '✍️', color: '#8B5CF6', text: 'Writing hook: "Your EMI is about to change. Here\'s by exactly how much."' },
+  { agent: 'Creator', icon: '✍️', color: '#8B5CF6', text: 'Building full script: Hook → Problem → Framework → CTA...' },
+  { agent: 'Creator', icon: '✍️', color: '#8B5CF6', text: '✓ Scene 1: Stock footage — family stressed over loan statement' },
+  { agent: 'Creator', icon: '✍️', color: '#8B5CF6', text: '✓ Hook psychology: Loss aversion triggers 3.2× more clicks' },
+  { agent: 'Publisher', icon: '🚀', color: '#10B981', text: 'Optimising YouTube title for CTR + SEO...' },
+  { agent: 'Publisher', icon: '🚀', color: '#10B981', text: '✓ Title: "RBI Cut ₹3,000 From Your EMI — But Only If You Do This"' },
+  { agent: 'Publisher', icon: '🚀', color: '#10B981', text: '✓ Instagram caption ready | ✓ TikTok hook ready | ✓ 10 SEO tags' },
+  { agent: 'Done', icon: '✨', color: '#F59E0B', text: '🎉 Your complete 7-day content pack is ready. 7 videos planned.' },
 ]
 
 const STATS = [
-  { value: '2,300+', label: 'Creators using it' },
-  { value: '90s', label: 'Avg generation time' },
-  { value: '13', label: 'AI Agents working' },
-  { value: '₹0', label: 'To start today' },
+  { value: '2.3K+', label: 'Creators' },
+  { value: '90s', label: 'Generation' },
+  { value: '3', label: 'AI Agents' },
+  { value: 'Free', label: 'Forever' },
 ]
 
 export default function Hero() {
@@ -37,7 +37,7 @@ export default function Hero() {
   const [isTyping, setIsTyping] = useState(true)
   const [demoLines, setDemoLines] = useState([])
   const [demoRunning, setDemoRunning] = useState(false)
-  const [particles, setParticles] = useState([])
+  const [activeAgent, setActiveAgent] = useState('research')
   const demoRef = useRef(null)
 
   // Niche typewriter
@@ -73,9 +73,14 @@ export default function Hero() {
     const addLine = () => {
       if (lineIndex < DEMO_LINES.length) {
         const line = DEMO_LINES[lineIndex]
-if (!line) return
+        if (!line) return
 
-setDemoLines(prev => [...prev, line])
+        if (line.agent === 'Research') setActiveAgent('research')
+        else if (line.agent === 'Creator') setActiveAgent('creator')
+        else if (line.agent === 'Publisher') setActiveAgent('publisher')
+        else if (line.agent === 'Done') setActiveAgent('done')
+
+        setDemoLines(prev => [...prev, line])
         lineIndex++
         if (demoRef.current) {
           demoRef.current.scrollTop = demoRef.current.scrollHeight
@@ -85,572 +90,981 @@ setDemoLines(prev => [...prev, line])
         setTimeout(() => {
           setDemoLines([])
           setDemoRunning(false)
-        }, 4000)
+          setActiveAgent('research')
+        }, 5000)
       }
     }
 
     setTimeout(addLine, 1200)
   }, [demoRunning])
 
-  // Particles
-  useEffect(() => {
-    setParticles(
-      Array.from({ length: 28 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 3 + 1,
-        delay: Math.random() * 8,
-        duration: Math.random() * 6 + 6,
-        opacity: Math.random() * 0.5 + 0.1,
-      }))
-    )
-  }, [])
-
   return (
     <>
       <style>{`
-        .hero {
+        /* Fully Responsive White Background Hero */
+        .hero-corporate {
           position: relative;
           min-height: 100vh;
-          background: radial-gradient(ellipse at 20% 50%, rgba(26, 38, 104, 0.6) 0%, transparent 60%),
-                      radial-gradient(ellipse at 80% 20%, rgba(201, 164, 53, 0.08) 0%, transparent 50%),
-                      radial-gradient(ellipse at 50% 100%, rgba(11, 19, 64, 0.8) 0%, transparent 70%),
-                      var(--navy-950);
+          background: #FFFFFF;
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: center;
           overflow: hidden;
-          padding: 120px clamp(1.25rem, 4vw, 2.5rem) 80px;
+          padding: clamp(60px, 10vh, 100px) clamp(1rem, 5vw, 3rem) clamp(40px, 8vh, 80px);
         }
 
-        /* Background grid */
-        .hero::before {
-          content: '';
+        /* Subtle gradient overlays - keeping very light */
+        .hero-bg-subtle {
           position: absolute;
           inset: 0;
-          background-image:
-            linear-gradient(rgba(201, 164, 53, 0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(201, 164, 53, 0.04) 1px, transparent 1px);
-          background-size: 60px 60px;
-          mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
+          background: 
+            radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.02) 0%, transparent 50%),
+            radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.02) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.01) 0%, transparent 70%);
+          z-index: 1;
           pointer-events: none;
         }
 
-        .hero-particle {
+        /* Animated grid - very subtle */
+        .hero-grid-pattern {
           position: absolute;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(201, 164, 53, 0.8), rgba(201, 164, 53, 0.1));
-          animation: particle-drift linear infinite;
+          inset: 0;
+          background-image: 
+            linear-gradient(rgba(99, 102, 241, 0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(99, 102, 241, 0.02) 1px, transparent 1px);
+          background-size: clamp(30px, 5vw, 50px) clamp(30px, 5vw, 50px);
+          z-index: 1;
+          animation: grid-shift 20s linear infinite;
           pointer-events: none;
         }
 
-        .hero-glow-orb {
+        /* Floating elements - very light */
+        .hero-float-element {
           position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
+          border-radius: 20px;
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(139, 92, 246, 0.03) 100%);
+          z-index: 1;
+          animation: float-gentle 6s ease-in-out infinite;
           pointer-events: none;
         }
 
-        .hero-content {
+        .float-1 {
+          width: clamp(150px, 30vw, 300px);
+          height: clamp(150px, 30vw, 300px);
+          top: -10%;
+          right: -5%;
+          animation-delay: 0s;
+        }
+
+        .float-2 {
+          width: clamp(100px, 20vw, 200px);
+          height: clamp(100px, 20vw, 200px);
+          bottom: -5%;
+          left: -5%;
+          animation-delay: -3s;
+        }
+
+        /* Content Container */
+        .hero-container {
           position: relative;
-          z-index: 2;
-          max-width: 1200px;
+          z-index: 10;
+          max-width: 1280px;
           width: 100%;
+          margin: 0 auto;
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: clamp(2rem, 4vw, 4rem);
+          gap: clamp(1.5rem, 4vw, 3rem);
           align-items: center;
         }
 
-        .hero-left {
+        /* Left Content */
+        .hero-content {
           display: flex;
           flex-direction: column;
-          gap: 1.75rem;
+          gap: clamp(0.75rem, 2vw, 1.25rem);
         }
 
-        .hero-badge {
+        /* Badge */
+        .hero-badge-corporate {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          padding: 7px 16px;
-          background: rgba(201, 164, 53, 0.1);
-          border: 1px solid rgba(201, 164, 53, 0.2);
+          gap: clamp(4px, 1vw, 8px);
+          padding: clamp(4px, 0.8vw, 6px) clamp(12px, 2vw, 16px);
+          background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.06) 100%);
+          border: 1px solid rgba(99, 102, 241, 0.12);
           border-radius: 100px;
-          color: var(--gold-300);
-          font-size: 0.8rem;
-          font-weight: 600;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-          font-family: var(--font-display);
           width: fit-content;
-          animation: fadeUp 0.6s ease both;
+          animation: slide-up 0.5s ease both;
         }
 
-        .hero-badge-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: var(--gold-400);
-          animation: pulse-gold 2s ease infinite;
+        .badge-icon {
+          font-size: clamp(0.75rem, 1.5vw, 1rem);
         }
 
-        .hero-title {
-          font-family: var(--font-display);
-          font-size: clamp(2.6rem, 5vw, 4rem);
-          font-weight: 800;
-          line-height: 1.1;
-          letter-spacing: -0.03em;
-          color: var(--white);
-          animation: fadeUp 0.7s ease 0.1s both;
+        .badge-text {
+          font-size: clamp(0.65rem, 1.3vw, 0.8rem);
+          font-weight: 600;
+          color: #6366F1;
+          letter-spacing: 0.02em;
         }
 
-        .hero-title .line-gold {
-          background: linear-gradient(135deg, var(--gold-300) 0%, var(--gold-500) 50%, var(--gold-300) 100%);
-          background-size: 200% auto;
+        /* Main Title */
+        .hero-title-corporate {
+          animation: slide-up 0.5s ease 0.1s both;
+        }
+
+        .title-main {
+          font-size: clamp(1.8rem, 6vw, 3.5rem);
+          font-weight: 700;
+          line-height: 1.15;
+          letter-spacing: -0.02em;
+          color: #0F172A;
+          margin-bottom: 0.5rem;
+        }
+
+        .title-gradient {
+          background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #10B981 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          animation: shimmer 4s linear infinite;
         }
 
-        .hero-niche-box {
-          display: inline-flex;
+        /* Niche Display */
+        .hero-niche-corporate {
+          display: flex;
           align-items: center;
-          gap: 10px;
-          background: rgba(201, 164, 53, 0.07);
-          border: 1px solid rgba(201, 164, 53, 0.18);
-          border-radius: 10px;
-          padding: 10px 16px;
-          font-family: var(--font-mono);
-          font-size: 0.9rem;
-          color: var(--gold-300);
-          margin-top: 0.5rem;
+          gap: clamp(6px, 1.5vw, 12px);
+          padding: clamp(6px, 1.2vw, 10px) clamp(12px, 2vw, 18px);
+          background: #FAFAFA;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
           width: fit-content;
-          min-width: 280px;
-          animation: fadeUp 0.7s ease 0.15s both;
+          max-width: 100%;
+          animation: slide-up 0.5s ease 0.15s both;
         }
 
-        .niche-label {
-          color: var(--silver-dim);
-          font-size: 0.75rem;
-          flex-shrink: 0;
+        .niche-icon-corporate {
+          font-size: clamp(0.9rem, 1.8vw, 1.2rem);
         }
 
-        .niche-cursor {
+        .niche-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        .niche-label-corporate {
+          font-size: clamp(0.55rem, 1vw, 0.7rem);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #6B7280;
+        }
+
+        .niche-value-corporate {
+          font-size: clamp(0.8rem, 1.5vw, 1rem);
+          font-weight: 600;
+          color: #1F2937;
+          font-family: 'SF Mono', 'Monaco', monospace;
+          word-break: break-word;
+        }
+
+        .cursor-corporate {
           display: inline-block;
           width: 2px;
-          height: 16px;
-          background: var(--gold-400);
+          height: clamp(12px, 2vw, 16px);
+          background: #6366F1;
           margin-left: 2px;
           animation: blink 1s step-end infinite;
-          vertical-align: middle;
         }
 
-        .hero-desc {
-          font-size: 1.1rem;
-          color: var(--silver);
-          line-height: 1.7;
-          max-width: 500px;
-          animation: fadeUp 0.7s ease 0.2s both;
+        /* Description */
+        .hero-description-corporate {
+          font-size: clamp(0.85rem, 1.5vw, 1rem);
+          line-height: 1.6;
+          color: #4B5563;
+          animation: slide-up 0.5s ease 0.2s both;
         }
 
-        .hero-desc strong {
-          color: var(--white);
+        .hero-description-corporate strong {
+          color: #111827;
           font-weight: 600;
         }
 
-        .hero-actions {
+        /* Agent Pills */
+        .agent-pills-corporate {
+          display: flex;
+          gap: clamp(4px, 1vw, 8px);
+          flex-wrap: wrap;
+          animation: slide-up 0.5s ease 0.25s both;
+        }
+
+        .pill-corporate {
           display: flex;
           align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-          animation: fadeUp 0.7s ease 0.3s both;
+          gap: clamp(3px, 0.8vw, 6px);
+          padding: clamp(5px, 1vw, 8px) clamp(8px, 1.5vw, 14px);
+          background: #FAFAFA;
+          border: 1px solid #E5E7EB;
+          border-radius: 40px;
+          transition: all 0.2s ease;
         }
 
-        .hero-stats {
+        .pill-corporate:hover {
+          border-color: #6366F1;
+          background: #FFFFFF;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+        }
+
+        .pill-icon {
+          font-size: clamp(0.8rem, 1.3vw, 1rem);
+        }
+
+        .pill-text {
+          font-size: clamp(0.7rem, 1.2vw, 0.85rem);
+          font-weight: 500;
+          color: #374151;
+        }
+
+        /* CTA Section */
+        .hero-cta-corporate {
           display: flex;
-          gap: 2rem;
-          padding-top: 0.5rem;
-          animation: fadeUp 0.7s ease 0.4s both;
+          align-items: center;
+          gap: clamp(8px, 1.5vw, 16px);
+          flex-wrap: wrap;
+          animation: slide-up 0.5s ease 0.3s both;
         }
 
-        .hero-stat-item {
+        .btn-primary-corporate {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: clamp(4px, 0.8vw, 8px);
+          padding: clamp(10px, 1.5vw, 14px) clamp(16px, 2.5vw, 28px);
+          background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+          border: none;
+          border-radius: 12px;
+          color: white;
+          font-weight: 600;
+          font-size: clamp(0.85rem, 1.4vw, 1rem);
+          text-decoration: none;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+          white-space: nowrap;
+        }
+
+        .btn-primary-corporate:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+        }
+
+        .btn-primary-corporate:active {
+          transform: translateY(0);
+        }
+
+        .btn-secondary-corporate {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: clamp(4px, 0.8vw, 8px);
+          padding: clamp(10px, 1.5vw, 14px) clamp(16px, 2.5vw, 24px);
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          color: #374151;
+          font-weight: 500;
+          font-size: clamp(0.85rem, 1.4vw, 1rem);
+          text-decoration: none;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+
+        .btn-secondary-corporate:hover {
+          border-color: #6366F1;
+          background: #FAFAFA;
+          transform: translateY(-1px);
+        }
+
+        .btn-secondary-corporate:active {
+          transform: translateY(0);
+        }
+
+        /* Stats */
+        .hero-stats-corporate {
+          display: flex;
+          gap: clamp(1rem, 3vw, 2rem);
+          padding-top: 0.5rem;
+          animation: slide-up 0.5s ease 0.35s both;
+          flex-wrap: wrap;
+        }
+
+        .stat-corporate {
           display: flex;
           flex-direction: column;
           gap: 2px;
         }
 
-        .hero-stat-value {
-          font-family: var(--font-display);
-          font-size: 1.3rem;
+        .stat-value-corporate {
+          font-size: clamp(1.1rem, 2.5vw, 1.5rem);
           font-weight: 700;
-          color: var(--gold-300);
+          color: #6366F1;
+          line-height: 1.2;
         }
 
-        .hero-stat-label {
-          font-size: 0.75rem;
-          color: var(--silver-dim);
+        .stat-label-corporate {
+          font-size: clamp(0.6rem, 1vw, 0.75rem);
           font-weight: 500;
+          color: #6B7280;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
         }
 
-        /* DEMO PANEL */
-        .hero-demo {
-          animation: fadeUp 0.8s ease 0.2s both;
+        /* Right - Demo Panel */
+        .hero-demo-corporate {
+          animation: slide-up 0.6s ease 0.2s both;
         }
 
-        .demo-panel {
-          background: rgba(6, 11, 40, 0.85);
-          border: 1px solid rgba(201, 164, 53, 0.2);
-          border-radius: 20px;
+        .demo-card {
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: clamp(12px, 2vw, 20px);
           overflow: hidden;
-          box-shadow:
-            0 0 0 1px rgba(201, 164, 53, 0.05),
-            0 24px 80px rgba(4, 8, 24, 0.7),
-            inset 0 1px 0 rgba(201, 164, 53, 0.1);
-          backdrop-filter: blur(20px);
+          box-shadow: 
+            0 20px 40px -10px rgba(0, 0, 0, 0.03),
+            0 0 0 1px rgba(99, 102, 241, 0.03);
         }
 
-        .demo-header {
+        .demo-header-corporate {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 14px 18px;
-          border-bottom: 1px solid rgba(201, 164, 53, 0.1);
-          background: rgba(11, 19, 64, 0.6);
+          padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 18px);
+          background: #FAFAFA;
+          border-bottom: 1px solid #E5E7EB;
         }
 
-        .demo-dots {
+        .demo-controls {
           display: flex;
-          gap: 7px;
+          gap: clamp(3px, 0.6vw, 6px);
         }
 
-        .demo-dot {
-          width: 11px;
-          height: 11px;
+        .control {
+          width: clamp(7px, 1vw, 10px);
+          height: clamp(7px, 1vw, 10px);
           border-radius: 50%;
         }
 
-        .demo-title {
-          font-family: var(--font-mono);
-          font-size: 0.78rem;
-          color: var(--silver-dim);
-          letter-spacing: 0.05em;
-        }
+        .control.red { background: #EF4444; }
+        .control.yellow { background: #F59E0B; }
+        .control.green { background: #10B981; }
 
-        .demo-live {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          font-size: 0.72rem;
-          color: #50C878;
-          font-weight: 600;
-          font-family: var(--font-mono);
-        }
-
-        .demo-live-dot {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: #50C878;
-          animation: pulse-gold 1.5s ease infinite;
-        }
-
-        .demo-body {
-          padding: 16px;
-          min-height: 320px;
-          max-height: 320px;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          scroll-behavior: smooth;
-        }
-
-        .demo-body::-webkit-scrollbar { width: 3px; }
-        .demo-body::-webkit-scrollbar-thumb { background: rgba(201,164,53,0.3); border-radius: 2px; }
-
-        .demo-line {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          padding: 8px 12px;
-          border-radius: 8px;
-          background: rgba(11, 19, 64, 0.5);
-          border: 1px solid rgba(200, 208, 232, 0.05);
-          animation: stream-in 0.3s ease both;
-        }
-
-        .demo-line-agent {
-          font-size: 0.68rem;
-          font-weight: 700;
-          font-family: var(--font-mono);
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          flex-shrink: 0;
-          padding: 2px 7px;
-          border-radius: 4px;
-          background: rgba(255,255,255,0.05);
-          margin-top: 1px;
-        }
-
-        .demo-line-text {
-          font-family: var(--font-mono);
-          font-size: 0.8rem;
-          color: rgba(200, 208, 232, 0.85);
-          line-height: 1.5;
-        }
-
-        .demo-line-text.done {
-          color: var(--gold-300);
+        .demo-header-title {
+          font-family: 'SF Mono', monospace;
+          font-size: clamp(0.6rem, 1.1vw, 0.75rem);
+          color: #6B7280;
           font-weight: 500;
         }
 
-        .demo-empty {
+        .demo-badge-live {
+          display: flex;
+          align-items: center;
+          gap: clamp(2px, 0.4vw, 4px);
+          padding: clamp(2px, 0.5vw, 4px) clamp(6px, 1vw, 10px);
+          background: rgba(16, 185, 129, 0.08);
+          border: 1px solid rgba(16, 185, 129, 0.15);
+          border-radius: 100px;
+        }
+
+        .live-dot {
+          width: clamp(4px, 0.7vw, 6px);
+          height: clamp(4px, 0.7vw, 6px);
+          border-radius: 50%;
+          background: #10B981;
+          animation: pulse 1.5s ease infinite;
+        }
+
+        .live-text {
+          font-size: clamp(0.5rem, 0.9vw, 0.65rem);
+          font-weight: 700;
+          color: #10B981;
+          letter-spacing: 0.05em;
+        }
+
+        .demo-body-corporate {
+          padding: clamp(10px, 1.5vw, 16px);
+          min-height: clamp(200px, 35vh, 280px);
+          max-height: clamp(200px, 35vh, 280px);
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: clamp(5px, 1vw, 8px);
+          background: #FFFFFF;
+        }
+
+        .demo-body-corporate::-webkit-scrollbar {
+          width: 3px;
+        }
+
+        .demo-body-corporate::-webkit-scrollbar-thumb {
+          background: #D1D5DB;
+          border-radius: 4px;
+        }
+
+        .demo-line-corporate {
+          display: flex;
+          align-items: flex-start;
+          gap: clamp(6px, 1vw, 10px);
+          padding: clamp(6px, 1.2vw, 10px) clamp(8px, 1.5vw, 12px);
+          background: #FAFAFA;
+          border: 1px solid #E5E7EB;
+          border-radius: clamp(6px, 1vw, 10px);
+          animation: slide-in 0.3s ease both;
+        }
+
+        .demo-agent-corporate {
+          display: flex;
+          align-items: center;
+          gap: clamp(2px, 0.5vw, 4px);
+          padding: clamp(2px, 0.4vw, 3px) clamp(5px, 0.8vw, 8px);
+          border-radius: 6px;
+          font-size: clamp(0.5rem, 0.9vw, 0.65rem);
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
+          font-family: 'SF Mono', monospace;
+          flex-shrink: 0;
+        }
+
+        .demo-agent-corporate.research {
+          background: rgba(99, 102, 241, 0.08);
+          color: #6366F1;
+        }
+
+        .demo-agent-corporate.creator {
+          background: rgba(139, 92, 246, 0.08);
+          color: #8B5CF6;
+        }
+
+        .demo-agent-corporate.publisher {
+          background: rgba(16, 185, 129, 0.08);
+          color: #10B981;
+        }
+
+        .demo-agent-corporate.done {
+          background: rgba(245, 158, 11, 0.08);
+          color: #F59E0B;
+        }
+
+        .demo-message-corporate {
+          font-family: 'SF Mono', monospace;
+          font-size: clamp(0.65rem, 1.1vw, 0.8rem);
+          color: #4B5563;
+          line-height: 1.4;
+          flex: 1;
+          word-break: break-word;
+        }
+
+        .demo-message-corporate.done {
+          color: #F59E0B;
+          font-weight: 500;
+        }
+
+        .demo-empty-corporate {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
           height: 100%;
-          gap: 10px;
-          opacity: 0.4;
+          min-height: clamp(160px, 25vh, 240px);
+          gap: clamp(8px, 1.5vw, 12px);
         }
 
-        .demo-empty-icon {
-          font-size: 2.5rem;
-          animation: float 3s ease infinite;
+        .empty-animation-corporate {
+          font-size: clamp(1.8rem, 4vw, 2.5rem);
+          animation: float-gentle 3s ease-in-out infinite;
         }
 
-        .demo-empty-text {
-          font-family: var(--font-mono);
-          font-size: 0.8rem;
-          color: var(--silver-dim);
+        .empty-text-corporate {
+          font-family: 'SF Mono', monospace;
+          font-size: clamp(0.65rem, 1.1vw, 0.8rem);
+          color: #9CA3AF;
         }
 
-        .demo-footer {
-          padding: 12px 18px;
-          border-top: 1px solid rgba(201, 164, 53, 0.08);
+        .demo-footer-corporate {
+          padding: clamp(8px, 1.2vw, 12px) clamp(12px, 2vw, 18px);
+          background: #FAFAFA;
+          border-top: 1px solid #E5E7EB;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: rgba(11, 19, 64, 0.4);
-        }
-
-        .demo-agents-active {
-          display: flex;
-          gap: 6px;
-        }
-
-        .demo-agent-pill {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 4px 10px;
-          border-radius: 100px;
-          font-size: 0.72rem;
-          font-weight: 600;
-          font-family: var(--font-mono);
-          border: 1px solid transparent;
-          transition: all 0.4s ease;
-        }
-
-        .demo-agent-pill.active-research {
-          background: rgba(201, 164, 53, 0.12);
-          border-color: rgba(201, 164, 53, 0.3);
-          color: #E8CA70;
-        }
-
-        .demo-agent-pill.active-creator {
-          background: rgba(74, 144, 217, 0.12);
-          border-color: rgba(74, 144, 217, 0.3);
-          color: #7DB8F0;
-        }
-
-        .demo-agent-pill.active-publisher {
-          background: rgba(80, 200, 120, 0.12);
-          border-color: rgba(80, 200, 120, 0.3);
-          color: #7FD8A0;
-        }
-
-        .demo-agent-pill.inactive {
-          background: rgba(255,255,255,0.03);
-          border-color: rgba(255,255,255,0.05);
-          color: var(--silver-dim);
-        }
-
-        .demo-timer {
-          font-family: var(--font-mono);
-          font-size: 0.72rem;
-          color: var(--silver-dim);
-        }
-
-        /* Scroll indicator */
-        .scroll-indicator {
-          position: absolute;
-          bottom: 2rem;
-          left: 50%;
-          transform: translateX(-50%);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
+          flex-wrap: wrap;
           gap: 8px;
-          animation: fadeIn 1s ease 1s both;
-          z-index: 2;
         }
 
-        .scroll-mouse {
-          width: 24px;
-          height: 38px;
-          border: 2px solid rgba(201, 164, 53, 0.3);
-          border-radius: 12px;
-          position: relative;
+        .agent-status-corporate {
+          display: flex;
+          gap: clamp(5px, 1vw, 10px);
+          flex-wrap: wrap;
         }
 
-        .scroll-wheel {
-          width: 3px;
-          height: 8px;
-          background: var(--gold-400);
-          border-radius: 2px;
-          position: absolute;
-          top: 6px;
-          left: 50%;
-          transform: translateX(-50%);
-          animation: float 1.5s ease infinite;
+        .status-item-corporate {
+          display: flex;
+          align-items: center;
+          gap: clamp(3px, 0.5vw, 5px);
+          opacity: 0.5;
+          transition: all 0.2s ease;
         }
 
-        .scroll-text {
-          font-size: 0.7rem;
-          color: rgba(200,208,232,0.4);
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          font-family: var(--font-display);
+        .status-item-corporate.active {
+          opacity: 1;
+        }
+
+        .status-dot-corporate {
+          width: clamp(4px, 0.7vw, 6px);
+          height: clamp(4px, 0.7vw, 6px);
+          border-radius: 50%;
+          background: #9CA3AF;
+        }
+
+        .status-item-corporate.active .status-dot-corporate {
+          background: #10B981;
+          animation: pulse 1.5s ease infinite;
+        }
+
+        .status-name-corporate {
+          font-size: clamp(0.55rem, 0.9vw, 0.7rem);
           font-weight: 600;
+          color: #6B7280;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
         }
 
-        @media (max-width: 900px) {
-          .hero-content {
-            grid-template-columns: 1fr;
+        .status-item-corporate.active .status-name-corporate {
+          color: #374151;
+        }
+
+        .demo-timer-corporate {
+          font-family: 'SF Mono', monospace;
+          font-size: clamp(0.55rem, 0.9vw, 0.7rem);
+          color: #6B7280;
+          padding: clamp(2px, 0.5vw, 4px) clamp(6px, 1vw, 10px);
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 6px;
+        }
+
+        /* Animations */
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
           }
-          .hero-left { text-align: center; align-items: center; }
-          .hero-stats { justify-content: center; }
-          .hero-actions { justify-content: center; }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
 
-        @media (max-width: 480px) {
-          .hero-stats { gap: 1.25rem; }
-          .hero-title { font-size: 2.2rem; }
+        @keyframes slide-in {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes float-gentle {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        @keyframes grid-shift {
+          0% {
+            transform: translate(0, 0);
+          }
+          100% {
+            transform: translate(50px, 50px);
+          }
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+
+        /* Tablet Responsive */
+        @media (max-width: 1024px) and (min-width: 641px) {
+          .hero-container {
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+            max-width: 700px;
+          }
+          
+          .hero-content {
+            text-align: center;
+            align-items: center;
+          }
+          
+          .hero-badge-corporate,
+          .hero-niche-corporate,
+          .agent-pills-corporate,
+          .hero-cta-corporate,
+          .hero-stats-corporate {
+            justify-content: center;
+          }
+
+          .hero-niche-corporate {
+            margin: 0 auto;
+          }
+
+          .demo-card {
+            max-width: 600px;
+            margin: 0 auto;
+          }
+
+          .title-main br {
+            display: none;
+          }
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 640px) {
+          .hero-corporate {
+            padding: 50px 1rem 40px;
+            min-height: auto;
+          }
+          
+          .hero-container {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+          }
+          
+          .hero-content {
+            text-align: center;
+            align-items: center;
+          }
+          
+          .hero-badge-corporate,
+          .hero-niche-corporate {
+            margin: 0 auto;
+          }
+
+          .hero-niche-corporate {
+            width: 100%;
+            max-width: 300px;
+            justify-content: center;
+          }
+          
+          .title-main {
+            font-size: clamp(1.8rem, 8vw, 2.5rem);
+          }
+          
+          .title-main br {
+            display: none;
+          }
+          
+          .hero-description-corporate {
+            padding: 0 0.5rem;
+          }
+          
+          .hero-stats-corporate {
+            justify-content: center;
+            gap: 1.2rem;
+          }
+          
+          .hero-cta-corporate {
+            flex-direction: column;
+            width: 100%;
+          }
+          
+          .btn-primary-corporate,
+          .btn-secondary-corporate {
+            width: 100%;
+            max-width: 280px;
+          }
+          
+          .agent-pills-corporate {
+            justify-content: center;
+            padding: 0 0.5rem;
+          }
+          
+          .pill-corporate {
+            flex: 0 1 auto;
+          }
+
+          .demo-body-corporate {
+            min-height: 220px;
+            max-height: 220px;
+          }
+
+          .demo-footer-corporate {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .demo-timer-corporate {
+            align-self: flex-end;
+          }
+
+          .float-1,
+          .float-2 {
+            opacity: 0.3;
+          }
+        }
+
+        /* Small Mobile */
+        @media (max-width: 380px) {
+          .hero-corporate {
+            padding: 40px 0.75rem 30px;
+          }
+
+          .title-main {
+            font-size: 1.6rem;
+          }
+
+          .hero-stats-corporate {
+            gap: 1rem;
+          }
+
+          .stat-value-corporate {
+            font-size: 1rem;
+          }
+
+          .stat-label-corporate {
+            font-size: 0.55rem;
+          }
+
+          .agent-pills-corporate {
+            gap: 4px;
+          }
+
+          .pill-corporate {
+            padding: 5px 8px;
+          }
+
+          .pill-text {
+            font-size: 0.65rem;
+          }
+
+          .demo-line-corporate {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+          }
+
+          .demo-agent-corporate {
+            align-self: flex-start;
+          }
+
+          .demo-message-corporate {
+            font-size: 0.6rem;
+          }
+
+          .agent-status-corporate {
+            gap: 8px;
+          }
+
+          .btn-primary-corporate,
+          .btn-secondary-corporate {
+            max-width: 100%;
+            white-space: normal;
+          }
+        }
+
+        /* Touch Device Optimizations */
+        @media (hover: none) and (pointer: coarse) {
+          .btn-primary-corporate,
+          .btn-secondary-corporate,
+          .pill-corporate {
+            cursor: default;
+            -webkit-tap-highlight-color: transparent;
+          }
+
+          .btn-primary-corporate:active,
+          .btn-secondary-corporate:active {
+            opacity: 0.8;
+          }
+
+          .pill-corporate:active {
+            background: #F3F4F6;
+          }
+        }
+
+        /* High DPI Screens */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+          .hero-grid-pattern {
+            background-size: 40px 40px;
+          }
+        }
+
+        /* Landscape Mode */
+        @media (max-height: 600px) and (orientation: landscape) {
+          .hero-corporate {
+            min-height: auto;
+            padding: 60px 1.5rem 40px;
+          }
+
+          .hero-container {
+            gap: 1.5rem;
+          }
+
+          .demo-body-corporate {
+            min-height: 180px;
+            max-height: 180px;
+          }
+
+          .hero-content {
+            gap: 0.5rem;
+          }
+        }
+
+        /* Large Desktop */
+        @media (min-width: 1440px) {
+          .hero-container {
+            max-width: 1400px;
+          }
+
+          .title-main {
+            font-size: 4rem;
+          }
         }
       `}</style>
 
-      <section className="hero" id="hero">
-        {/* Background glow orbs */}
-        <div className="hero-glow-orb" style={{
-          width: 600, height: 600,
-          background: 'radial-gradient(circle, rgba(26,38,104,0.5), transparent)',
-          top: -200, left: -200,
-        }} />
-        <div className="hero-glow-orb" style={{
-          width: 400, height: 400,
-          background: 'radial-gradient(circle, rgba(201,164,53,0.06), transparent)',
-          top: 100, right: -100,
-        }} />
+      <section className="hero-corporate">
+        {/* Background Elements - All white/very light */}
+        <div className="hero-bg-subtle" />
+        <div className="hero-grid-pattern" />
+        <div className="hero-float-element float-1" />
+        <div className="hero-float-element float-2" />
 
-        {/* Floating particles */}
-        {particles.map(p => (
-          <div
-            key={p.id}
-            className="hero-particle"
-            style={{
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              width: p.size,
-              height: p.size,
-              opacity: p.opacity,
-              animationDelay: `${p.delay}s`,
-              animationDuration: `${p.duration}s`,
-            }}
-          />
-        ))}
-
-        <div className="hero-content">
-          {/* LEFT */}
-          <div className="hero-left">
-            <div className="hero-badge">
-              <span className="hero-badge-dot" />
-              India's First Faceless YouTube OS
+        {/* Main Container */}
+        <div className="hero-container">
+          {/* Left Column */}
+          <div className="hero-content">
+            {/* Badge */}
+            <div className="hero-badge-corporate">
+              <span className="badge-icon">✨</span>
+              <span className="badge-text">AI-Powered Content Studio</span>
             </div>
 
-            <h1 className="hero-title">
-              Your next 7 videos.<br />
-              <span className="line-gold">Written. Directed.</span><br />
-              Ready to publish.
-            </h1>
-
-            <div className="hero-niche-box">
-              <span className="niche-label">Niche →</span>
-              <span style={{ color: 'var(--gold-300)' }}>{displayedNiche}</span>
-              {isTyping && <span className="niche-cursor" />}
+            {/* Title */}
+            <div className="hero-title-corporate">
+              <h1 className="title-main">
+                Your next <span className="title-gradient">7 videos</span>
+                <br />
+                researched, written,
+                <br />
+                ready to publish
+              </h1>
             </div>
 
-            <p className="hero-desc">
-              Not a prompt box. Not a caption tool.<br />
-              A <strong>complete AI operating system</strong> that researches trends,
-              writes scripts with scene-by-scene direction, explains hook psychology,
-              and hands you a 7-day posting plan — <strong>in 90 seconds.</strong>
+            {/* Niche */}
+            <div className="hero-niche-corporate">
+              <span className="niche-icon-corporate">🎯</span>
+              <div className="niche-info">
+                <span className="niche-label-corporate">Active Niche</span>
+                <span className="niche-value-corporate">
+                  {displayedNiche}
+                  {isTyping && <span className="cursor-corporate" />}
+                </span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="hero-description-corporate">
+              Three specialized AI agents working together to research trends, 
+              write production-ready scripts, and optimize for publishing — 
+              <strong> all in 90 seconds.</strong>
             </p>
 
-            <div className="hero-actions">
-              <a href="/generate" className="btn btn-gold btn-lg">
-                ⚡ Generate Free
+            {/* Agent Pills */}
+            <div className="agent-pills-corporate">
+              <div className="pill-corporate">
+                <span className="pill-icon">🔍</span>
+                <span className="pill-text">Research Agent</span>
+              </div>
+              <div className="pill-corporate">
+                <span className="pill-icon">✍️</span>
+                <span className="pill-text">Creator Agent</span>
+              </div>
+              <div className="pill-corporate">
+                <span className="pill-icon">🚀</span>
+                <span className="pill-text">Publisher Agent</span>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="hero-cta-corporate">
+              <a href="/generate" className="btn-primary-corporate">
+                <span>✨</span>
+                Start Creating Free
+                <span>→</span>
               </a>
-              <a href="#how-it-works" className="btn btn-outline">
-                ▶ See How It Works
+              <a href="#how-it-works" className="btn-secondary-corporate">
+                <span>▶</span>
+                Watch Demo
               </a>
             </div>
 
-            <div className="hero-stats">
-              {STATS.map(s => (
-                <div key={s.label} className="hero-stat-item">
-                  <span className="hero-stat-value">{s.value}</span>
-                  <span className="hero-stat-label">{s.label}</span>
+            {/* Stats */}
+            <div className="hero-stats-corporate">
+              {STATS.map(stat => (
+                <div key={stat.label} className="stat-corporate">
+                  <span className="stat-value-corporate">{stat.value}</span>
+                  <span className="stat-label-corporate">{stat.label}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* RIGHT — LIVE DEMO */}
-          <div className="hero-demo">
-            <div className="demo-panel">
-              <div className="demo-header">
-                <div className="demo-dots">
-                  <div className="demo-dot" style={{ background: '#FF5F57' }} />
-                  <div className="demo-dot" style={{ background: '#FFBD2E' }} />
-                  <div className="demo-dot" style={{ background: '#28CA41' }} />
+          {/* Right Column - Demo */}
+          <div className="hero-demo-corporate">
+            <div className="demo-card">
+              {/* Header */}
+              <div className="demo-header-corporate">
+                <div className="demo-controls">
+                  <div className="control red" />
+                  <div className="control yellow" />
+                  <div className="control green" />
                 </div>
-                <span className="demo-title">faceless-studio / ai-pipeline</span>
-                <span className="demo-live">
-                  <span className="demo-live-dot" />
-                  LIVE
-                </span>
+                <span className="demo-header-title">studio-ai / pipeline</span>
+                <div className="demo-badge-live">
+                  <span className="live-dot" />
+                  <span className="live-text">LIVE</span>
+                </div>
               </div>
 
-              <div className="demo-body" ref={demoRef}>
+              {/* Body */}
+              <div className="demo-body-corporate" ref={demoRef}>
                 {demoLines.length === 0 ? (
-                  <div className="demo-empty">
-                    <div className="demo-empty-icon">🤖</div>
-                    <p className="demo-empty-text">Initialising agents...</p>
+                  <div className="demo-empty-corporate">
+                    <div className="empty-animation-corporate">🤖</div>
+                    <p className="empty-text-corporate">Initializing agents...</p>
                   </div>
                 ) : (
                   demoLines.map((line, i) => (
-                    <div key={i} className="demo-line">
-                      <span
-                        className="demo-line-agent"
-                        style={{ color: line.color }}
-                      >
+                    <div key={i} className="demo-line-corporate">
+                      <span className={`demo-agent-corporate ${line.agent.toLowerCase()}`}>
                         {line.icon} {line.agent}
                       </span>
-                      <span className={`demo-line-text ${line.agent === 'Done' ? 'done' : ''}`}>
+                      <span className={`demo-message-corporate ${line.agent === 'Done' ? 'done' : ''}`}>
                         {line.text}
                       </span>
                     </div>
@@ -658,34 +1072,30 @@ setDemoLines(prev => [...prev, line])
                 )}
               </div>
 
-              <div className="demo-footer">
-                <div className="demo-agents-active">
-                  {[
-                    { name: 'Research', cls: demoLines.some(l => l.agent === 'Research') ? 'active-research' : 'inactive' },
-                    { name: 'Creator', cls: demoLines.some(l => l.agent === 'Creator') ? 'active-creator' : 'inactive' },
-                    { name: 'Publisher', cls: demoLines.some(l => l.agent === 'Publisher') ? 'active-publisher' : 'inactive' },
-                  ].map(a => (
-                    <span key={a.name} className={`demo-agent-pill ${a.cls}`}>
-                      {a.name}
-                    </span>
-                  ))}
+              {/* Footer */}
+              <div className="demo-footer-corporate">
+                <div className="agent-status-corporate">
+                  <div className={`status-item-corporate ${activeAgent === 'research' ? 'active' : ''}`}>
+                    <span className="status-dot-corporate" />
+                    <span className="status-name-corporate">Research</span>
+                  </div>
+                  <div className={`status-item-corporate ${activeAgent === 'creator' ? 'active' : ''}`}>
+                    <span className="status-dot-corporate" />
+                    <span className="status-name-corporate">Creator</span>
+                  </div>
+                  <div className={`status-item-corporate ${activeAgent === 'publisher' ? 'active' : ''}`}>
+                    <span className="status-dot-corporate" />
+                    <span className="status-name-corporate">Publisher</span>
+                  </div>
                 </div>
-                <span className="demo-timer">
+                <span className="demo-timer-corporate">
                   {demoLines.length > 0 && demoLines[demoLines.length - 1].agent !== 'Done'
-                    ? `${demoLines.length * 0.8}s elapsed`
-                    : demoLines.some(l => l.agent === 'Done') ? '✓ 8.8s total' : '--'}
+                    ? `${(demoLines.length * 0.8).toFixed(1)}s`
+                    : demoLines.some(l => l.agent === 'Done') ? '✓ 8.8s' : '0.0s'}
                 </span>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="scroll-indicator">
-          <div className="scroll-mouse">
-            <div className="scroll-wheel" />
-          </div>
-          <span className="scroll-text">Scroll</span>
         </div>
       </section>
     </>

@@ -26,7 +26,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Creator Pro',
-    price: { monthly: 999, annual: 7999 },
+    price: { monthly: 399, annual: 3999 },
     currency: '₹',
     description: 'Everything you need to grow a real faceless channel.',
     cta: 'Start Pro Free →',
@@ -47,7 +47,7 @@ const PLANS = [
   {
     id: 'studio',
     name: 'Studio',
-    price: { monthly: 2499, annual: 19999 },
+    price: { monthly: 999, annual: 10999 },
     currency: '₹',
     description: 'For agencies and creators managing multiple channels.',
     cta: 'Contact Us',
@@ -81,7 +81,7 @@ export default function Pricing() {
     return () => observer.disconnect()
   }, [])
 
-  const savings = Math.round(((999 * 12) - 7999) / (999 * 12) * 100)
+  const savings = Math.round(((399 * 12) - 3999) / (999 * 12) * 100)
 
   return (
     <>
