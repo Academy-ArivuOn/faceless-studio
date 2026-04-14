@@ -1,7 +1,7 @@
 // components/app/ThumbnailGenerator.jsx
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { getSupabaseBrowser } from '@/lib/supabase-browser';
+import { getSupabaseBrowser } from '@/packages/supabase-browser';
 
 const PLATFORMS = [
   { value: 'youtube', label: 'YouTube', ratio: '16:9' },

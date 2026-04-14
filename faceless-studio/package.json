@@ -2,6 +2,10 @@
   "name": "faceless-studio",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +13,7 @@
     "lint": "biome check",
     "format": "biome format --write"
   },
+  
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.9.0",
