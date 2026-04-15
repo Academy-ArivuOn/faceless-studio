@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 40;
 
-import { guardAgent }                     from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildMonetisationCoachPrompt }   from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }            from '@/packages/gemini';
 import { sanitise }                       from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                       from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'monetisation-coach');
+  const guard = await guardAgentWithContext(request, 'monetisation-coach');
   if (guard.blocked) return guard.response;
 
   try {
@@ -35,6 +35,8 @@ export async function POST(request) {
       subscriberCount: String(subscriberCount || '').trim().slice(0, 50),
       averageViews:    String(averageViews || '').trim().slice(0, 50),
       location:        (location || 'India').trim().slice(0, 80),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildMonetisationCoachPrompt(cleanInput);
@@ -72,6 +74,8 @@ export async function POST(request) {
         affiliate_count:   data.affiliate_matches?.length || 0,
         has_pitch_email:   !!data.sponsor_pitch_email?.body,
         projection_stages: data.revenue_projections?.length || 0,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

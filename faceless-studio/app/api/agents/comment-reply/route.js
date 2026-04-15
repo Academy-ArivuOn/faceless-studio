@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 30;
 
-import { guardAgent }                from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildCommentReplyPrompt }   from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }       from '@/packages/gemini';
 import { sanitise }                  from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                  from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'comment-reply');
+  const guard = await guardAgentWithContext(request, 'comment-reply');
   if (guard.blocked) return guard.response;
 
   try {
@@ -44,6 +44,8 @@ export async function POST(request) {
       platform:    platform.trim().slice(0, 80),
       channelTone: (channelTone || 'Educational').trim().slice(0, 80),
       channelName: (channelName || '').trim().slice(0, 100),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildCommentReplyPrompt(cleanInput);
@@ -75,6 +77,8 @@ export async function POST(request) {
         comments_in:   commentsArray.length,
         replies_out:   data.replies?.length || 0,
         pin_recommendation: data.pin_recommendation?.comment_number || null,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

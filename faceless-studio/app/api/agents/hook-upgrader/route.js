@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 30;
 
-import { guardAgent }               from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildHookUpgraderPrompt }  from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }      from '@/packages/gemini';
 import { sanitise }                 from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                 from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'hook-upgrader');
+  const guard = await guardAgentWithContext(request, 'hook-upgrader');
   if (guard.blocked) return guard.response;
 
   try {
@@ -34,6 +34,8 @@ export async function POST(request) {
       niche:    niche.trim().slice(0, 150),
       platform: platform.trim().slice(0, 80),
       tone:     (tone || 'Educational').trim().slice(0, 80),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildHookUpgraderPrompt(cleanInput);
@@ -75,6 +77,8 @@ export async function POST(request) {
         upgrade_count:  data.upgrades?.length || 0,
         diagnosis:      data.diagnosis?.weakness_type || null,
         winner:         data.winner?.hook_text?.slice(0, 80) || null,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

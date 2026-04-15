@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 30;
 
-import { guardAgent }              from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildTitleBattlePrompt }  from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }     from '@/packages/gemini';
 import { sanitise }                from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'title-battle');
+  const guard = await guardAgentWithContext(request, 'title-battle');
   if (guard.blocked) return guard.response;
 
   try {
@@ -36,6 +36,8 @@ export async function POST(request) {
       platform:     platform.trim().slice(0, 80),
       currentTitle: currentTitle.trim().slice(0, 200),
       creatorType:  (creatorType || 'general').trim().slice(0, 80),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildTitleBattlePrompt(cleanInput);
@@ -75,6 +77,8 @@ export async function POST(request) {
         duration_ms:    Date.now() - startMs,
         variant_count:  data.title_variants?.length || 0,
         winner:         data.winner?.title || null,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 60;
 
-import { guardAgent }                  from '@/packages/plan-guard';
+import { guardAgentWithContext }       from '@/app/api/agents/plan-guard-with-chain';
 import { buildChannelStrategyPrompt }  from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }         from '@/packages/gemini';
 import { sanitise }                    from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                    from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'channel-strategy');
+  const guard = await guardAgentWithContext(request, 'channel-strategy');
   if (guard.blocked) return guard.response;
 
   try {
@@ -39,6 +39,8 @@ export async function POST(request) {
       contentFrequency:   (contentFrequency || '').trim().slice(0, 150),
       biggestChallenge:   (biggestChallenge || '').trim().slice(0, 300),
       targetAudience:     (targetAudience || '').trim().slice(0, 300),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildChannelStrategyPrompt(cleanInput);
@@ -65,11 +67,13 @@ export async function POST(request) {
       success: true,
       data,
       meta: {
-        agent:          'channel-strategy',
-        duration_ms:    Date.now() - startMs,
-        phases:         data.roadmap?.length || 0,
-        pillars:        data.content_pillars?.length || 0,
-        growth_tactics: data.growth_tactics?.length || 0,
+        agent:'channel-strategy',
+        duration_ms:Date.now() - startMs,
+        phases:data.roadmap?.length || 0,
+        pillars:data.content_pillars?.length || 0,
+        growth_tactics:data.growth_tactics?.length || 0,
+        dna_injected:!!guard.dnaBlock,
+        session_id:guard.sessionId,
       },
     });
 

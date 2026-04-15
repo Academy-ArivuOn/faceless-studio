@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 40;
 
-import { guardAgent }               from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildViralDecoderPrompt }  from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }      from '@/packages/gemini';
 import { sanitise }                 from '@/packages/agents/validator';
@@ -36,6 +36,8 @@ export async function POST(request) {
       platform:     platform.trim().slice(0, 80),
       channelName:  (channelName || '').trim().slice(0, 150),
       viewCount:    String(viewCount || '').trim().slice(0, 50),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildViralDecoderPrompt(cleanInput);
@@ -71,6 +73,8 @@ export async function POST(request) {
           data.replication_blueprint?.video_idea_3,
         ].filter(Boolean).length,
         odds_score: data.odds_of_replication?.score || null,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

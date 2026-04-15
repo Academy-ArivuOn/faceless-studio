@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 90; // Long scripts need full time
 
-import { guardAgent }                  from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildScriptLocaliserPrompt }  from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }         from '@/packages/gemini';
 import { sanitise }                    from '@/packages/agents/validator';
@@ -15,7 +15,7 @@ const SUPPORTED_LANGUAGES = [
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'script-localiser');
+  const guard = await guardAgentWithContext(request, 'script-localiser');
   if (guard.blocked) return guard.response;
 
   try {
@@ -45,6 +45,8 @@ export async function POST(request) {
       niche:          niche.trim().slice(0, 150),
       platform:       platform.trim().slice(0, 80),
       creatorType:    (creatorType || 'general').trim().slice(0, 80),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildScriptLocaliserPrompt(cleanInput);
@@ -90,6 +92,8 @@ export async function POST(request) {
         original_word_count:   data.original_word_count || 0,
         localised_word_count:  data.localised_word_count || 0,
         adaptations_count:     data.cultural_adaptations?.length || 0,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

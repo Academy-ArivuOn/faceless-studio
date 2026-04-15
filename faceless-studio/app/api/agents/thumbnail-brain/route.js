@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 30;
 
-import { guardAgent }                from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildThumbnailBrainPrompt } from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }       from '@/packages/gemini';
 import { sanitise }                  from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                  from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'thumbnail-brain');
+  const guard = await guardAgentWithContext(request, 'thumbnail-brain');
   if (guard.blocked) return guard.response;
 
   try {
@@ -36,6 +36,8 @@ export async function POST(request) {
       platform:   platform.trim().slice(0, 80),
       chosenHook: chosenHook.trim().slice(0, 400),
       titleText:  titleText.trim().slice(0, 150),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildThumbnailBrainPrompt(cleanInput);
@@ -66,6 +68,8 @@ export async function POST(request) {
         duration_ms: Date.now() - startMs,
         has_variant: !!data.variant_b,
         has_ai_prompt: !!data.primary_concept?.ai_image_prompt,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 

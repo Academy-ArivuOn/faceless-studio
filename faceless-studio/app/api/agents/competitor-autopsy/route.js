@@ -1,7 +1,7 @@
 export const runtime     = 'nodejs';
 export const maxDuration = 45;
 
-import { guardAgent }                    from '@/packages/plan-guard';
+import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
 import { buildCompetitorAutopsyPrompt }  from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }           from '@/packages/gemini';
 import { sanitise }                      from '@/packages/agents/validator';
@@ -9,7 +9,7 @@ import { sanitise }                      from '@/packages/agents/validator';
 export async function POST(request) {
   const startMs = Date.now();
 
-  const guard = await guardAgent(request, 'competitor-autopsy');
+  const guard = await guardAgentWithContext(request, 'competitor-autopsy');
   if (guard.blocked) return guard.response;
 
   try {
@@ -34,6 +34,8 @@ export async function POST(request) {
       niche:           niche.trim().slice(0, 150),
       platform:        platform.trim().slice(0, 80),
       subscriberCount: String(subscriberCount || '').trim().slice(0, 50),
+      _dnaBlock:   guard.dnaBlock   || '',
+      _chainBlock: guard.chainBlock || '',
     };
 
     const prompt = buildCompetitorAutopsyPrompt(cleanInput);
@@ -66,6 +68,8 @@ export async function POST(request) {
         gaps_found:     gapCount,
         weaknesses:     data.weaknesses?.length || 0,
         battle_plan:    !!data.battle_plan,
+        dna_injected: !!guard.dnaBlock,
+        session_id:  guard.sessionId,
       },
     });
 
