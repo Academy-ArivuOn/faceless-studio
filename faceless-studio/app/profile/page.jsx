@@ -194,6 +194,7 @@ export default function ProfilePage() {
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'creator', label: 'Creator DNA', icon: '🧬' },
     { id: 'social', label: 'Social Links', icon: '🔗' },
+    { id: 'billing', label: 'Billing & Transactions', icon: '💳' }
   ];
 
   return (
@@ -430,6 +431,9 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* Tab: Billing */}
+          {activeTab === 'billing' && <TransactionsPanel session={session} />}
+          
           {/* Tab: Creator DNA */}
           {activeTab === 'creator' && (
             <div className="pr-section">

@@ -1,5 +1,11 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+// app/generations/page.jsx  — FIXED
+// Key fixes:
+//  1. Fetches research_output + creator_output + publisher_output in the list query
+//  2. handleOpenFull properly reconstructs the full result object from DB row
+//  3. Adds empty-state guards so missing JSONB columns don't crash the UI
+
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/packages/supabase-browser';
 
@@ -9,13 +15,13 @@ const PLATFORM_ICONS = {
 };
 
 const TYPE_COLORS = {
-  general: { bg: '#F5F5F5', color: '#5C5C5C', border: '#E8E8E8' },
-  educator: { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
-  coach: { bg: '#F0FDF4', color: '#0E7C4A', border: '#86EFAC' },
-  entertainer: { bg: '#FFF9EB', color: '#D4A847', border: '#FDE68A' },
-  podcaster: { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
-  blogger: { bg: '#FFFBEB', color: '#D97706', border: '#FED7AA' },
-  agency: { bg: '#F8F8F8', color: '#0A0A0A', border: '#E8E8E8' },
+  general:    { bg: '#F5F5F5', color: '#5C5C5C', border: '#E8E8E8' },
+  educator:   { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' },
+  coach:      { bg: '#F0FDF4', color: '#0E7C4A', border: '#86EFAC' },
+  entertainer:{ bg: '#FFF9EB', color: '#D4A847', border: '#FDE68A' },
+  podcaster:  { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
+  blogger:    { bg: '#FFFBEB', color: '#D97706', border: '#FED7AA' },
+  agency:     { bg: '#F8F8F8', color: '#0A0A0A', border: '#E8E8E8' },
 };
 
 function StatCard({ value, label, sub }) {
@@ -29,11 +35,11 @@ function StatCard({ value, label, sub }) {
 }
 
 function GenerationCard({ gen, onView, onReopen }) {
-  const typeStyle = TYPE_COLORS[gen.creator_type] || TYPE_COLORS.general;
+  const typeStyle   = TYPE_COLORS[gen.creator_type] || TYPE_COLORS.general;
   const platformIcon = PLATFORM_ICONS[gen.platform] || '▶';
-  const date = new Date(gen.generated_at);
-  const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const date        = new Date(gen.generated_at);
+  const dateStr     = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  const timeStr     = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   return (
     <div
@@ -68,9 +74,11 @@ function GenerationCard({ gen, onView, onReopen }) {
         <span style={{ padding: '3px 9px', borderRadius: 5, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", background: '#F5F5F5', border: '1px solid #E8E8E8', color: '#5C5C5C' }}>
           {gen.platform}
         </span>
-        <span style={{ padding: '3px 9px', borderRadius: 5, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", background: typeStyle.bg, border: `1px solid ${typeStyle.border}`, color: typeStyle.color }}>
-          {gen.creator_type}
-        </span>
+        {gen.creator_type && (
+          <span style={{ padding: '3px 9px', borderRadius: 5, fontSize: 10, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", background: typeStyle.bg, border: `1px solid ${typeStyle.border}`, color: typeStyle.color }}>
+            {gen.creator_type}
+          </span>
+        )}
         {gen.language && gen.language !== 'English' && (
           <span style={{ padding: '3px 9px', borderRadius: 5, fontSize: 10, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", background: '#F5F3FF', border: '1px solid #DDD6FE', color: '#7C3AED' }}>
             🌐 {gen.language}
@@ -108,11 +116,13 @@ function GenerationCard({ gen, onView, onReopen }) {
 
 function PreviewModal({ gen, onClose, onOpenFull }) {
   if (!gen) return null;
-  const r = gen.research_output || {};
-  const c = gen.creator_output || {};
-  const p = gen.publisher_output || {};
-  const yt = p.youtube || {};
-  const ig = p.instagram || {};
+
+  // FIX: safely pull from JSONB columns with fallbacks
+  const r  = gen.research_output  || {};
+  const c  = gen.creator_output   || {};
+  const p  = gen.publisher_output || {};
+  const yt = p.youtube    || {};
+  const ig = p.instagram  || {};
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 999, padding: '24px 16px', overflowY: 'auto' }}>
@@ -150,7 +160,7 @@ function PreviewModal({ gen, onClose, onOpenFull }) {
                 </p>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {c.word_count > 0 && <span style={{ fontSize: 10, color: '#0E7C4A', fontFamily: "'JetBrains Mono', monospace", background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 4, padding: '2px 7px', fontWeight: 700 }}>{c.word_count} words</span>}
-                  {c.scenes?.length > 0 && <span style={{ fontSize: 10, color: '#2563EB', fontFamily: "'JetBrains Mono', monospace", background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, padding: '2px 7px', fontWeight: 700 }}>{c.scenes.length} scenes</span>}
+                  {Array.isArray(c.scenes) && c.scenes.length > 0 && <span style={{ fontSize: 10, color: '#2563EB', fontFamily: "'JetBrains Mono', monospace", background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, padding: '2px 7px', fontWeight: 700 }}>{c.scenes.length} scenes</span>}
                 </div>
               </div>
               <div style={{ background: '#F8F8F8', border: '1px solid #E8E8E8', borderRadius: 10, padding: '14px 16px', fontSize: 13, color: '#3C3C3C', lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", whiteSpace: 'pre-wrap', maxHeight: 200, overflow: 'hidden', position: 'relative' }}>
@@ -189,9 +199,17 @@ function PreviewModal({ gen, onClose, onOpenFull }) {
           {ig.caption && (
             <div style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#8C8C8C', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'JetBrains Mono', monospace", marginBottom: 7 }}>📸 Instagram Caption</p>
-              <div style={{ padding: '12px 14px', background: '#F8F8F8', border: '1px solid #E8E8E8', borderRadius: 8, fontSize: 12, color: '#3C3C3C', lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif', maxHeight: 100, overflow: 'hidden" }}>
+              <div style={{ padding: '12px 14px', background: '#F8F8F8', border: '1px solid #E8E8E8', borderRadius: 8, fontSize: 12, color: '#3C3C3C', lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif", maxHeight: 100, overflow: 'hidden' }}>
                 {ig.caption.slice(0, 200)}{ig.caption.length > 200 && '…'}
               </div>
+            </div>
+          )}
+
+          {/* Fallback if no JSONB data saved yet */}
+          {!c.full_script && !yt.recommended_title && (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#8C8C8C', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
+              <p style={{ marginBottom: 8 }}>⚠️ Detailed content not available for this generation.</p>
+              <p style={{ fontSize: 12 }}>This may be an older generation saved before full output storage was enabled.</p>
             </div>
           )}
         </div>
@@ -211,20 +229,20 @@ function PreviewModal({ gen, onClose, onOpenFull }) {
 }
 
 export default function GenerationsPage() {
-  const router = useRouter();
+  const router   = useRouter();
   const supabase = getSupabaseBrowser();
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [generations, setGenerations] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [selectedGen, setSelectedGen] = useState(null);
+  const [user,       setUser]       = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [generations,setGenerations]= useState([]);
+  const [filtered,   setFiltered]   = useState([]);
+  const [selectedGen,setSelectedGen]= useState(null);
 
-  const [search, setSearch] = useState('');
+  const [search,         setSearch]         = useState('');
   const [filterPlatform, setFilterPlatform] = useState('All');
-  const [filterType, setFilterType] = useState('All');
-  const [sortBy, setSortBy] = useState('newest');
-  const [page, setPage] = useState(1);
+  const [filterType,     setFilterType]     = useState('All');
+  const [sortBy,         setSortBy]         = useState('newest');
+  const [page,           setPage]           = useState(1);
   const PER_PAGE = 12;
 
   useEffect(() => {
@@ -232,13 +250,20 @@ export default function GenerationsPage() {
       if (!session) { router.replace('/login'); return; }
       setUser(session.user);
 
+      // FIX: fetch all JSONB columns so preview modal and "Open Full Result" work correctly
       const { data, error } = await supabase
         .from('generations')
-        .select('*')
+        .select(
+          'id, niche, platform, creator_type, tone, language, chosen_topic, chosen_hook, generated_at, generation_duration_ms, research_output, creator_output, publisher_output'
+        )
+        .eq('user_id', session.user.id)
         .order('generated_at', { ascending: false })
         .limit(200);
 
-      if (!error) setGenerations(data || []);
+      if (error) {
+        console.error('[generations] fetch error:', error.message);
+      }
+      setGenerations(data || []);
       setLoading(false);
     });
   }, []);
@@ -249,41 +274,63 @@ export default function GenerationsPage() {
       const q = search.toLowerCase();
       result = result.filter(g =>
         (g.chosen_topic || '').toLowerCase().includes(q) ||
-        (g.niche || '').toLowerCase().includes(q) ||
-        (g.chosen_hook || '').toLowerCase().includes(q)
+        (g.niche        || '').toLowerCase().includes(q) ||
+        (g.chosen_hook  || '').toLowerCase().includes(q)
       );
     }
     if (filterPlatform !== 'All') result = result.filter(g => g.platform === filterPlatform);
-    if (filterType !== 'All') result = result.filter(g => g.creator_type === filterType);
-    if (sortBy === 'oldest') result.reverse();
+    if (filterType     !== 'All') result = result.filter(g => g.creator_type === filterType);
+    if (sortBy === 'oldest') result = [...result].reverse();
     setFiltered(result);
     setPage(1);
   }, [search, filterPlatform, filterType, sortBy, generations]);
 
   function handleView(gen) { setSelectedGen(gen); }
 
+  // FIX: reconstruct the full result format that results/page.jsx expects
   function handleOpenFull(gen) {
-    // Reconstruct the result format and store in sessionStorage
+    const researchOutput  = gen.research_output  || {};
+    const creatorOutput   = gen.creator_output   || {};
+    const publisherOutput = gen.publisher_output || {};
+
+    // Merge top-level chosen_topic/chosen_hook into research (they come from separate columns)
     const resultData = {
-      research: { ...(gen.research_output || {}), chosen_topic: gen.chosen_topic, chosen_hook: gen.chosen_hook },
-      creator: gen.creator_output || {},
-      publisher: gen.publisher_output || {},
-      meta: { total_duration_ms: gen.generation_duration_ms || 0 },
-      input: { platform: gen.platform, language: gen.language, tone: gen.tone, creatorType: gen.creator_type },
+      research: {
+        ...researchOutput,
+        chosen_topic: gen.chosen_topic || researchOutput.chosen_topic || '',
+        chosen_hook:  gen.chosen_hook  || researchOutput.chosen_hook  || '',
+      },
+      creator:   creatorOutput,
+      publisher: publisherOutput,
+      meta: {
+        total_duration_ms: gen.generation_duration_ms || 0,
+        streak:            0,
+      },
+      input: {
+        platform:    gen.platform     || '',
+        language:    gen.language     || 'English',
+        tone:        gen.tone         || 'Educational',
+        creatorType: gen.creator_type || 'general',
+        // Pull creatorMode/blogType/location from research_output.input if stored there
+        creatorMode: researchOutput?.input?.creatorMode || creatorOutput?.creator_mode || 'faceless',
+        blogType:    creatorOutput?.blog_type    || null,
+        location:    creatorOutput?.location     || null,
+      },
     };
+
     sessionStorage.setItem('studioai_result', JSON.stringify(resultData));
     router.push('/results');
   }
 
   const platforms = ['All', ...new Set(generations.map(g => g.platform).filter(Boolean))];
-  const types = ['All', ...new Set(generations.map(g => g.creator_type).filter(Boolean))];
-  const paged = filtered.slice(0, page * PER_PAGE);
-  const hasMore = paged.length < filtered.length;
+  const types     = ['All', ...new Set(generations.map(g => g.creator_type).filter(Boolean))];
+  const paged     = filtered.slice(0, page * PER_PAGE);
+  const hasMore   = paged.length < filtered.length;
 
   // Stats
-  const totalWords = generations.reduce((sum, g) => sum + (g.creator_output?.word_count || 0), 0);
-  const platforms_used = new Set(generations.map(g => g.platform)).size;
-  const thisMonth = generations.filter(g => {
+  const totalWords    = generations.reduce((sum, g) => sum + (g.creator_output?.word_count || 0), 0);
+  const platformsUsed = new Set(generations.map(g => g.platform)).size;
+  const thisMonth     = generations.filter(g => {
     const d = new Date(g.generated_at);
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -336,14 +383,14 @@ export default function GenerationsPage() {
         .gh-search:focus { border-color: #0A0A0A; }
         .gh-select { padding: 10px 32px 10px 12px; border: 1.5px solid #E8E8E8; border-radius: 9px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: #0A0A0A; outline: none; appearance: none; background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238C8C8C' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; cursor: pointer; transition: border-color 0.2s; }
         .gh-select:focus { border-color: #0A0A0A; }
-        .gh-results-count { font-size: 12px; color: '#8C8C8C'; font-family: 'JetBrains Mono', monospace; color: #8C8C8C; white-space: nowrap; }
+        .gh-results-count { font-size: 12px; color: #8C8C8C; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
 
         .gh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; animation: fadeUp 0.3s ease both; }
 
         .gh-empty { border: 1.5px dashed #E8E8E8; border-radius: 14px; padding: 60px 24px; text-align: center; }
         .gh-empty-icon { font-size: 36px; margin-bottom: 16px; display: block; opacity: 0.3; }
 
-        .gh-load-more { width: 100%; padding: 13px; border: 1.5px solid #E8E8E8; border-radius: 10px; background: #FFFFFF; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: '#5C5C5C'; cursor: pointer; transition: all 0.15s; margin-top: 20px; color: #5C5C5C; }
+        .gh-load-more { width: 100%; padding: 13px; border: 1.5px solid #E8E8E8; border-radius: 10px; background: #FFFFFF; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; color: #5C5C5C; cursor: pointer; transition: all 0.15s; margin-top: 20px; }
         .gh-load-more:hover { border-color: #0A0A0A; color: #0A0A0A; }
 
         @media (max-width: 640px) {
@@ -390,7 +437,7 @@ export default function GenerationsPage() {
             <StatCard value={generations.length} label="Total Generations" sub="All time" />
             <StatCard value={thisMonth} label="This Month" sub={new Date().toLocaleString('default', { month: 'long' })} />
             <StatCard value={totalWords > 1000 ? `${(totalWords / 1000).toFixed(1)}k` : totalWords} label="Words Written" sub="Across all scripts" />
-            <StatCard value={platforms_used} label="Platforms" sub="Different formats" />
+            <StatCard value={platformsUsed} label="Platforms" sub="Different formats" />
           </div>
 
           {/* Toolbar */}
@@ -449,7 +496,11 @@ export default function GenerationsPage() {
 
       {/* Preview Modal */}
       {selectedGen && (
-        <PreviewModal gen={selectedGen} onClose={() => setSelectedGen(null)} onOpenFull={(gen) => { setSelectedGen(null); handleOpenFull(gen); }} />
+        <PreviewModal
+          gen={selectedGen}
+          onClose={() => setSelectedGen(null)}
+          onOpenFull={gen => { setSelectedGen(null); handleOpenFull(gen); }}
+        />
       )}
     </>
   );

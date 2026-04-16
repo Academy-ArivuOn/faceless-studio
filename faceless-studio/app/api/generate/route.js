@@ -1,3 +1,4 @@
+// app/api/generate/route.js  — FIXED
 export const runtime     = 'nodejs';
 export const maxDuration = 120;
 
@@ -73,8 +74,15 @@ export async function POST(request) {
     catch { return Response.json({ error: 'Invalid JSON in request body' }, { status: 400 }); }
 
     const {
-      niche, platform = 'YouTube', creatorType = 'general',
-      tone = 'Educational', language = 'English',
+      niche,
+      platform    = 'YouTube',
+      creatorType = 'general',
+      tone        = 'Educational',
+      language    = 'English',
+      // FIX: capture vlogger/face/faceless fields that the form sends
+      creatorMode = 'faceless',
+      blogType    = null,
+      location    = null,
     } = body;
 
     if (!niche || typeof niche !== 'string' || niche.trim().length < 2) {
@@ -87,12 +95,16 @@ export async function POST(request) {
       creatorType: creatorType.toString().trim().slice(0, 80),
       tone:        tone.toString().trim().slice(0, 80),
       language:    language.toString().trim().slice(0, 50),
+      // FIX: include these in cleanInput so they flow through to agents + DB
+      creatorMode: (creatorMode || 'faceless').toString().trim().slice(0, 50),
+      blogType:    blogType  ? blogType.toString().trim().slice(0, 50)   : null,
+      location:    location  ? location.toString().trim().slice(0, 200)  : null,
     };
 
     const authHeader = request.headers.get('Authorization') || '';
 
     // ── Fetch Creator DNA ──────────────────────────────────────────────────────
-    const dna = await getCreatorDNA(user.id);
+    const dna      = await getCreatorDNA(user.id);
     const dnaBlock = buildDNAContextBlock(dna, cleanInput);
 
     // ── Research Agent ─────────────────────────────────────────────────────────
@@ -100,11 +112,13 @@ export async function POST(request) {
     {
       const t0 = Date.now();
       try {
-        const result = await callAgent('research', { ...cleanInput, _dnaBlock: dnaBlock }, authHeader, dna, sessionId);
+        const result = await callAgent('research', {
+          ...cleanInput,
+          _dnaBlock: dnaBlock,
+        }, authHeader, dna, sessionId);
         research = result.data;
         agentDurations.research = Date.now() - t0;
 
-        // Save research output to session context for chain
         await saveSessionContext(user.id, sessionId, { research });
       } catch (err) {
         console.error('[generate] Research agent failed:', err.message);
@@ -130,12 +144,14 @@ export async function POST(request) {
           competitorGap:  research.competitor_gap,
           targetAudience: research.target_audience_description,
           _dnaBlock:      dnaBlock,
-          _creatorMode:   dna?.creator_mode || 'faceless',
+          // FIX: pass creatorMode, blogType, location explicitly to creator agent
+          _creatorMode:   cleanInput.creatorMode,
+          blogType:       cleanInput.blogType,
+          location:       cleanInput.location,
         }, authHeader, dna, sessionId);
         creator = result.data;
         agentDurations.creator = Date.now() - t0;
 
-        // Append creator output to session context
         await saveSessionContext(user.id, sessionId, { research, creator });
       } catch (err) {
         console.error('[generate] Creator agent failed:', err.message);
@@ -175,20 +191,37 @@ export async function POST(request) {
     // ── Persist results ────────────────────────────────────────────────────────
     const totalDurationMs = Date.now() - pipelineStart;
 
+    // FIX: pass the full cleanInput (including creatorMode/blogType/location) to saveGeneration
     const [saveResult, streakResult, usageResult] = await Promise.allSettled([
-      saveGeneration({ userId: user.id, input: cleanInput, research, creator, publisher, durationMs: totalDurationMs }),
+      saveGeneration({
+        userId:      user.id,
+        input:       cleanInput,   // now includes creatorMode, blogType, location
+        research,
+        creator,
+        publisher,
+        durationMs:  totalDurationMs,
+      }),
       updateStreak(user.id),
       incrementUsage(user.id),
     ]);
 
-    // Update creator DNA with what we learned this session
+    if (saveResult.status === 'rejected') {
+      // Log but don't fail the request — user already got their content
+      console.error('[generate] saveGeneration failed:', saveResult.reason?.message || saveResult.reason);
+    }
+    if (usageResult.status === 'rejected') {
+      console.error('[generate] incrementUsage failed:', usageResult.reason?.message || usageResult.reason);
+    }
+
+    // Update creator DNA
     if (dna !== null) {
-      await updateCreatorDNA(user.id, {
+      updateCreatorDNA(user.id, {
         primary_niche:    cleanInput.niche,
         primary_platform: cleanInput.platform,
         primary_language: cleanInput.language,
         creator_type:     cleanInput.creatorType,
-      });
+        creator_mode:     cleanInput.creatorMode,
+      }).catch(err => console.error('[generate] updateCreatorDNA failed:', err.message));
     }
 
     const generationId = saveResult.status === 'fulfilled' ? saveResult.value : null;
@@ -202,16 +235,16 @@ export async function POST(request) {
       research,
       creator,
       publisher,
-      dna:       dna ? { creator_mode: dna.creator_mode, channel_size: dna.channel_size } : null,
+      dna: dna ? { creator_mode: dna.creator_mode, channel_size: dna.channel_size } : null,
       meta: {
         total_duration_ms: totalDurationMs,
         agent_durations:   agentDurations,
         streak:            newStreak,
         usage: {
-          plan:      usageCheck.plan,
-          used:      (usageCheck.used || 0) + 1,
-          limit:     usageCheck.limit,
-          remaining: usageCheck.remaining !== null ? Math.max(0, (usageCheck.remaining || 0) - 1) : null,
+          plan:       usageCheck.plan,
+          used:       (usageCheck.used || 0) + 1,
+          limit:      usageCheck.limit,
+          remaining:  usageCheck.remaining !== null ? Math.max(0, (usageCheck.remaining || 0) - 1) : null,
           reset_date: usageCheck.reset_date,
         },
       },

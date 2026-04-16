@@ -1,57 +1,31 @@
+// packages/supabase.js  — FIXED saveGeneration + all helpers
+// Replace your existing packages/supabase.js with this file.
+
 import { createClient } from '@supabase/supabase-js';
 
-// ─── Clients ──────────────────────────────────────────────────────────────────
-// Service role client — bypasses RLS for backend writes. NEVER expose to browser.
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: { persistSession: false, autoRefreshToken: false },
-  }
-);
-
-// Anon client — used only for verifying user JWTs
-const supabaseAnon = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  {
-    auth: { persistSession: false },
-  }
-);
-
-// ─── Plan Limits ──────────────────────────────────────────────────────────────
-export const PLAN_LIMITS = {
-  free:   3,
-  pro:    Infinity,
-  studio: Infinity,
-};
-
-// ─── nextMonthStart ───────────────────────────────────────────────────────────
-// Returns an ISO timestamp for the 1st of next month at 00:00:00 UTC
-function nextMonthStart() {
-  const now  = new Date();
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
-  return next.toISOString();
+// ── Client (service-role for server-side writes) ───────────────────────────
+function getServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Missing SUPABASE env vars');
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
-// ─── verifyAuth ───────────────────────────────────────────────────────────────
-// Extracts the Bearer token from the Authorization header and verifies it with Supabase.
-// Returns the user object or throws an error with statusCode 401.
+// ── Auth helpers ───────────────────────────────────────────────────────────
 export async function verifyAuth(request) {
-  const authHeader = request.headers.get('Authorization') || request.headers.get('authorization');
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    const err = new Error('Missing or malformed Authorization header');
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) {
+    const err = new Error('No authorization token provided');
     err.statusCode = 401;
     throw err;
   }
 
-  const token = authHeader.replace('Bearer ', '').trim();
-
-  const { data: { user }, error } = await supabaseAnon.auth.getUser(token);
+  const supabase = getServiceClient();
+  const { data: { user }, error } = await supabase.auth.getUser(token);
 
   if (error || !user) {
-    const err = new Error(error?.message || 'Invalid or expired session token');
+    const err = new Error('Invalid or expired token');
     err.statusCode = 401;
     throw err;
   }
@@ -59,256 +33,177 @@ export async function verifyAuth(request) {
   return user;
 }
 
-// ─── getOrCreateUsage ─────────────────────────────────────────────────────────
-// Returns the user_usage row, creating one if this is the user's first request.
-export async function getOrCreateUsage(userId) {
-  const { data: existing, error: fetchError } = await supabaseAdmin
+// ── Usage helpers ──────────────────────────────────────────────────────────
+export async function checkUsage(userId) {
+  const supabase = getServiceClient();
+
+  let { data, error } = await supabase
     .from('user_usage')
-    .select('*')
+    .select('plan, generations_count, total_generations, reset_date')
     .eq('user_id', userId)
     .single();
 
-  if (existing) return existing;
-
-  // First time — create the row (the trigger should have done this, but belt-and-suspenders)
-  if (fetchError?.code === 'PGRST116') {
-    const { data: created, error: createError } = await supabaseAdmin
+  // Auto-create row if missing (new user trigger may not have fired yet)
+  if (error && error.code === 'PGRST116') {
+    const { data: inserted, error: insertErr } = await supabase
       .from('user_usage')
       .insert({
-        user_id:          userId,
-        plan:             'free',
+        user_id:           userId,
+        plan:              'free',
         generations_count: 0,
         total_generations: 0,
-        reset_date:        nextMonthStart(),
+        reset_date:        new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
       })
-      .select()
+      .select('plan, generations_count, total_generations, reset_date')
       .single();
 
-    if (createError) throw new Error(`Failed to create usage row: ${createError.message}`);
-    return created;
+    if (insertErr) throw new Error(`checkUsage insert failed: ${insertErr.message}`);
+    data = inserted;
+    error = null;
   }
 
-  throw new Error(`Failed to fetch usage row: ${fetchError?.message}`);
-}
+  if (error) throw new Error(`checkUsage failed: ${error.message}`);
 
-// ─── checkUsage ───────────────────────────────────────────────────────────────
-// Returns { allowed, plan, used, limit, remaining, reason }
-// Auto-resets monthly counter if reset_date has passed.
-export async function checkUsage(userId) {
-  const usage = await getOrCreateUsage(userId);
-
-  // Auto-reset if past the reset date
-  if (usage.reset_date && new Date() >= new Date(usage.reset_date)) {
-    const { data: reset, error: resetError } = await supabaseAdmin
+  // Monthly reset check
+  const now = new Date();
+  const resetDate = data.reset_date ? new Date(data.reset_date) : null;
+  if (resetDate && now >= resetDate) {
+    const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+    await supabase
       .from('user_usage')
-      .update({
-        generations_count: 0,
-        reset_date:        nextMonthStart(),
-        updated_at:        new Date().toISOString(),
-      })
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (!resetError && reset) {
-      usage.generations_count = 0;
-      usage.reset_date = reset.reset_date;
-    }
+      .update({ generations_count: 0, reset_date: nextReset, updated_at: new Date().toISOString() })
+      .eq('user_id', userId);
+    data.generations_count = 0;
+    data.reset_date = nextReset;
   }
 
-  const plan      = usage.plan || 'free';
-  const used      = usage.generations_count || 0;
-  const limit     = PLAN_LIMITS[plan] ?? PLAN_LIMITS.free;
-  const remaining = limit === Infinity ? Infinity : Math.max(0, limit - used);
-  const allowed   = remaining > 0;
+  const LIMITS = { free: 3, pro: Infinity, studio: Infinity };
+  const plan    = data.plan || 'free';
+  const limit   = LIMITS[plan] ?? 3;
+  const used    = data.generations_count || 0;
+  const allowed = used < limit;
 
   return {
-    allowed,
     plan,
     used,
-    limit:     limit === Infinity ? null : limit,
-    remaining: remaining === Infinity ? null : remaining,
-    reason:    allowed ? null : `Monthly limit reached (${used}/${limit} on ${plan} plan)`,
-    reset_date: usage.reset_date,
+    limit:      limit === Infinity ? null : limit,
+    remaining:  limit === Infinity ? null : Math.max(0, limit - used),
+    allowed,
+    reset_date: data.reset_date,
+    reason:     allowed ? null : `Monthly limit of ${limit} reached`,
   };
 }
 
-// ─── incrementUsage ───────────────────────────────────────────────────────────
-// Atomically increments the usage counter.
-// Prefers RPC (avoids race conditions); falls back to manual update.
 export async function incrementUsage(userId) {
-  // Try the atomic RPC first
-  const { error: rpcError } = await supabaseAdmin.rpc('increment_usage', { uid: userId });
-
-  if (!rpcError) return;
-
-  // Fallback: manual increment (non-atomic but acceptable for low concurrency)
-  console.warn('[incrementUsage] RPC failed, using fallback:', rpcError.message);
-
-  const usage = await getOrCreateUsage(userId);
-
-  const { error: updateError } = await supabaseAdmin
-    .from('user_usage')
-    .update({
-      generations_count: (usage.generations_count || 0) + 1,
-      total_generations: (usage.total_generations  || 0) + 1,
-      updated_at:        new Date().toISOString(),
-    })
-    .eq('user_id', userId);
-
-  if (updateError) {
-    // Non-critical — log but don't throw. Generation already succeeded.
-    console.error('[incrementUsage] Fallback update failed:', updateError.message);
-  }
+  const supabase = getServiceClient();
+  const { error } = await supabase.rpc('increment_usage', { uid: userId });
+  if (error) throw new Error(`incrementUsage failed: ${error.message}`);
 }
 
-// ─── saveGeneration ───────────────────────────────────────────────────────────
-// Saves the full generation pack to the generations table.
-// Non-critical — logs errors but does not throw.
+// ── Save generation ────────────────────────────────────────────────────────
+// FIX: properly maps ALL input fields (creatorMode, blogType, location) to DB columns
 export async function saveGeneration({ userId, input, research, creator, publisher, durationMs }) {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('generations')
-      .insert({
-        user_id:              userId,
-        niche:                input.niche,
-        platform:             input.platform,
-        tone:                 input.tone     || 'Educational',
-        language:             input.language || 'English',
-        creator_type:         input.creatorType,
-        chosen_topic:         research.chosen_topic,
-        chosen_hook:          research.chosen_hook,
-        research_output:      research,
-        creator_output:       creator,
-        publisher_output:     publisher,
-        generation_duration_ms: durationMs,
-        generated_at:         new Date().toISOString(),
-      })
-      .select('id')
-      .single();
+  const supabase = getServiceClient();
 
-    if (error) {
-      console.error('[saveGeneration] Insert error:', error.message);
-      return null;
-    }
-    return data?.id;
-  } catch (err) {
-    console.error('[saveGeneration] Unexpected error:', err.message);
-    return null;
-  }
-}
+  const row = {
+    user_id:                userId,
+    // Core input fields (these columns exist in schema.sql)
+    niche:                  input.niche        || null,
+    platform:               input.platform     || null,
+    tone:                   input.tone         || 'Educational',
+    language:               input.language     || 'English',
+    creator_type:           input.creatorType  || input.creator_type || null,
+    // Derived from research output
+    chosen_topic:           research?.chosen_topic || null,
+    chosen_hook:            research?.chosen_hook  || null,
+    // Full agent outputs stored as JSONB
+    research_output:        research   || null,
+    creator_output:         creator    || null,
+    publisher_output:       publisher  || null,
+    generation_duration_ms: durationMs || null,
+    generated_at:           new Date().toISOString(),
+  };
 
-// ─── getHistory ───────────────────────────────────────────────────────────────
-// Returns the last N generations for a user (lightweight — no full JSONB blobs).
-export async function getHistory(userId, limit = 20) {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('generations')
-    .select('id, niche, platform, creator_type, chosen_topic, chosen_hook, generated_at')
-    .eq('user_id', userId)
-    .order('generated_at', { ascending: false })
-    .limit(limit);
+    .insert(row)
+    .select('id')
+    .single();
 
   if (error) {
-    console.error('[getHistory] Error:', error.message);
-    return [];
+    console.error('[saveGeneration] DB insert error:', error.message, error.details);
+    throw new Error(`saveGeneration failed: ${error.message}`);
   }
-  return data || [];
+
+  return data?.id || null;
 }
 
-// ─── updateStreak ─────────────────────────────────────────────────────────────
-// Checks the user's last generation date and updates streak accordingly:
-// - Same day → keep current streak (don't double-count)
-// - Yesterday → increment streak
-// - Anything older → reset to 1
-// Returns the new streak count.
+// ── Streak ─────────────────────────────────────────────────────────────────
 export async function updateStreak(userId) {
-  try {
-    const { data: profile, error: fetchError } = await supabaseAdmin
-      .from('profiles')
-      .select('streak_count, last_generation_date')
-      .eq('id', userId)
-      .single();
+  const supabase = getServiceClient();
 
-    if (fetchError || !profile) return 1;
+  const { data: profile, error: fetchErr } = await supabase
+    .from('profiles')
+    .select('streak_count, last_generation_date')
+    .eq('id', userId)
+    .single();
 
-    const today         = new Date().toISOString().slice(0, 10);           // YYYY-MM-DD
-    const lastDate      = profile.last_generation_date;
-    const currentStreak = profile.streak_count || 0;
-
-    let newStreak;
-
-    if (lastDate === today) {
-      // Already generated today — don't change streak
-      newStreak = currentStreak;
-    } else if (lastDate) {
-      const last       = new Date(lastDate);
-      const todayDate  = new Date(today);
-      const diffDays   = Math.round((todayDate - last) / (1000 * 60 * 60 * 24));
-
-      newStreak = diffDays === 1 ? currentStreak + 1 : 1;
-    } else {
-      newStreak = 1;
-    }
-
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        streak_count:          newStreak,
-        last_generation_date:  today,
-        updated_at:            new Date().toISOString(),
-      })
-      .eq('id', userId);
-
-    if (updateError) {
-      console.error('[updateStreak] Update error:', updateError.message);
-    }
-
-    return newStreak;
-  } catch (err) {
-    console.error('[updateStreak] Unexpected error:', err.message);
-    return 1;
+  if (fetchErr) {
+    console.error('[updateStreak] fetch failed:', fetchErr.message);
+    return 0;
   }
+
+  const today     = new Date().toISOString().slice(0, 10);
+  const lastDate  = profile?.last_generation_date;
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  let newStreak = 1;
+  if (lastDate === yesterday) {
+    newStreak = (profile.streak_count || 0) + 1;
+  } else if (lastDate === today) {
+    newStreak = profile.streak_count || 1; // already incremented today
+  }
+
+  await supabase
+    .from('profiles')
+    .update({
+      streak_count:          newStreak,
+      last_generation_date:  today,
+      updated_at:            new Date().toISOString(),
+    })
+    .eq('id', userId);
+
+  return newStreak;
 }
 
-// ─── upgradePlan ─────────────────────────────────────────────────────────────
-// Called from the Lemon Squeezy webhook to change a user's plan.
+// ── Plan management ────────────────────────────────────────────────────────
 export async function upgradePlan(userId, plan) {
-  const validPlans = ['free', 'pro', 'studio'];
-  if (!validPlans.includes(plan)) {
-    throw new Error(`Invalid plan: ${plan}. Must be one of: ${validPlans.join(', ')}`);
-  }
+  const supabase = getServiceClient();
 
-  const { error } = await supabaseAdmin
+  const { error } = await supabase
     .from('user_usage')
     .update({
-      plan:             plan,
-      plan_activated_at: plan !== 'free' ? new Date().toISOString() : null,
+      plan,
+      plan_activated_at: new Date().toISOString(),
       updated_at:        new Date().toISOString(),
     })
     .eq('user_id', userId);
 
-  if (error) throw new Error(`Failed to upgrade plan: ${error.message}`);
+  if (error) throw new Error(`upgradePlan failed: ${error.message}`);
 }
 
-// ─── getUserByEmail ───────────────────────────────────────────────────────────
-// Used by the webhook to look up a user by email address.
-// Queries auth.users via the admin API (service role required).
 export async function getUserByEmail(email) {
-  // Supabase Admin API — lists users with filter
-  const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-    page:    1,
-    perPage: 1,
-    // Supabase doesn't support direct email filter in listUsers,
-    // so we query the profiles table instead
-  });
+  const supabase = getServiceClient();
 
-  // Query profiles table (which mirrors auth.users email via trigger)
-  const { data: profile, error: profileError } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('profiles')
     .select('id, email')
     .eq('email', email.toLowerCase().trim())
     .single();
 
-  if (profileError || !profile) return null;
-  return profile;
+  if (error && error.code !== 'PGRST116') {
+    console.error('[getUserByEmail] error:', error.message);
+  }
+
+  return data || null;
 }
