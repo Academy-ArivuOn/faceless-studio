@@ -7,7 +7,7 @@ import { saveSessionContext } from '@/packages/session-context';
 import { randomUUID } from 'crypto';
 
 async function callAgent(agentName, payload, authHeader, dna, sessionId) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://studio-ai-hub.vercel.app';
   const url     = `${baseUrl}/api/agents/${agentName}`;
 
   const response = await fetch(url, {

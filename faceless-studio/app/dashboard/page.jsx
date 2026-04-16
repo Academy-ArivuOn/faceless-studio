@@ -1,28 +1,51 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { getSupabaseBrowser } from '@/packages/supabase-browser';
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { getSupabaseBrowser } from "@/packages/supabase-browser";
+import { usePathname } from "next/navigation";
 
 // ─── DASHBOARD PAGE — Corporate Premium White Theme ────────────────────────
+const NAV_ITEMS = [
+  { label: "Dashboard", path: "/dashboard" },
+  { label: "Generations", path: "/generations" },
+  { label: "Gift", path: "/gift" },
+  { label: "Profile", path: "/profile" },
+  { label: "Settings", path: "/settings" },
+];
 
 export default function DashboardPage() {
-  const router   = useRouter();
+  const router = useRouter();
   const supabase = getSupabaseBrowser();
-
-  const [user,    setUser]    = useState(null);
-  const [usage,   setUsage]   = useState(null);
+  const pathname = usePathname();
+  const [user, setUser] = useState(null);
+  const [usage, setUsage] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.replace('/login'); return; }
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
       setUser(session.user);
       const [usageRes, histRes] = await Promise.all([
-        fetch('/api/usage', { headers:{ Authorization:`Bearer ${session.access_token}` }}),
-        supabase.from('generations')
-          .select('id,niche,platform,creator_type,chosen_topic,chosen_hook,generated_at')
-          .order('generated_at',{ ascending:false })
+        fetch("/api/usage", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }),
+        supabase
+          .from("generations")
+          .select(
+            "id,niche,platform,creator_type,chosen_topic,chosen_hook,generated_at",
+          )
+          .order("generated_at", { ascending: false })
           .limit(20),
       ]);
       const usageJson = await usageRes.json();
@@ -32,21 +55,43 @@ export default function DashboardPage() {
     });
   }, []);
 
-  if (loading) return (
-    <div style={{ minHeight:'100vh', background:'#FFFFFF', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ width:24, height:24, borderRadius:'50%', border:'2px solid #E8E8E8', borderTopColor:'#0A0A0A', animation:'spin 0.7s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
-    </div>
-  );
+  if (loading)
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#FFFFFF",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
+        <div
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: "50%",
+            border: "2px solid #E8E8E8",
+            borderTopColor: "#0A0A0A",
+            animation: "spin 0.7s linear infinite",
+          }}
+        />
+        <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
+      </div>
+    );
 
-  const plan      = usage?.plan || 'free';
+  const plan = usage?.plan || "free";
   const resetDate = usage?.reset_date
-    ? new Date(usage.reset_date).toLocaleDateString('en-IN',{ day:'numeric', month:'short', year:'numeric' })
+    ? new Date(usage.reset_date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
     : null;
 
-  const usagePct = plan === 'free' && usage?.limit
-    ? Math.min(100, ((usage.used || 0) / usage.limit) * 100)
-    : 100;
+  const usagePct =
+    plan === "free" && usage?.limit
+      ? Math.min(100, ((usage.used || 0) / usage.limit) * 100)
+      : 100;
 
   return (
     <>
@@ -55,12 +100,66 @@ export default function DashboardPage() {
 
         *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
         @keyframes spin { to { transform:rotate(360deg); } }
+        .ai-orb {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 30% 30%, #ffffff, #0A0A0A);
+          box-shadow: 0 0 10px rgba(0,0,0,0.2);
+          position: relative;
+        }
 
+        /* subtle pulse animation */
+        .ai-orb::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          border: 1px solid rgba(0,0,0,0.2);
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.6; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
         .dash-root {
           min-height: 100vh;
           background: #FFFFFF;
           font-family: 'DM Sans', sans-serif;
           color: #0A0A0A;
+        }
+        .dash-sidebar {
+          width: 220px;
+          border-right: 1px solid #E8E8E8;
+          padding: 20px;
+          background: #FAFAFA;
+          min-height: 100vh;
+        }
+
+        .dash-sidebar-item {
+          display: block;
+          width: 100%;
+          text-align: left;
+          padding: 12px 14px;
+          margin-bottom: 6px;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          font-size: 14px;
+          font-weight: 500;
+          color: #5C5C5C;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .dash-sidebar-item:hover {
+          background: #F0F0F0;
+          color: #0A0A0A;
+        }
+        .dash-sidebar-item.active {
+          background: #0A0A0A;
+          color: #FFFFFF;
         }
 
         /* ── TOPBAR ── */
@@ -96,7 +195,72 @@ export default function DashboardPage() {
           font-weight: 700;
           color: #0A0A0A;
         }
+        .dash-sidebar {
+          width: 220px;
+          transition: width 0.25s ease;
+          border-right: 1px solid #E8E8E8;
+          padding: 20px;
+          background: #FAFAFA;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
 
+        /* Collapsed */
+        .dash-sidebar.collapsed {
+          width: 70px;
+        }
+
+        /* Toggle button */
+        .dash-toggle-btn {
+          margin-bottom: 20px;
+          background: none;
+          border: none;
+          font-size: 18px;
+          cursor: pointer;
+        }
+
+        /* Sidebar item */
+        .dash-sidebar-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 14px;
+          color: #5C5C5C;
+        }
+
+        /* Hide text when collapsed */
+        .dash-sidebar.collapsed .dash-sidebar-item span:last-child {
+          display: none;
+        }
+
+        /* Active */
+        .dash-sidebar-item.active {
+          background: #0A0A0A;
+          color: #fff;
+        }
+
+        /* Footer */
+        .dash-sidebar-footer {
+          margin-top: auto;
+        }
+
+        /* Avatar */
+        .avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #0A0A0A;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
         .dash-sep { color: #E8E8E8; margin: 0 4px; }
 
         .dash-crumb {
@@ -607,222 +771,319 @@ export default function DashboardPage() {
       `}</style>
 
       <div className="dash-root">
-
-        {/* ── Topbar ── */}
-        <header className="dash-topbar">
-          <div className="dash-topbar-left">
-            <div className="dash-logo-box">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#FFFFFF" strokeWidth="1.4" fill="none"/>
-                <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#FFFFFF" fillOpacity="0.3"/>
-              </svg>
-            </div>
-            <span className="dash-brand">Studio AI</span>
-            <span className="dash-sep">/</span>
-            <span className="dash-crumb">Dashboard</span>
-          </div>
-          <div className="dash-topbar-right">
-            <button className="dash-nav-btn" onClick={() => router.push('/agents')}>Agents</button>
+        <div style={{ display: "flex" }}>
+          {/* Sidebar */}
+          <aside
+            className={`dash-sidebar ${sidebarOpen ? "open" : "collapsed"}`}>
+            {/* Toggle Button */}
             <button
-              className="dash-generate-btn"
-              onClick={() => router.push('/generate')}
-            >
-              + Generate →
+              className="dash-toggle-btn"
+              onClick={() => setSidebarOpen(!sidebarOpen)}>
+              <div className="ai-orb"></div>
             </button>
-            <button
-              className="dash-nav-btn"
-              style={{ marginLeft: 8 }}
-              onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}
-            >
-              Sign out
-            </button>
-          </div>
-        </header>
 
-        <main className="dash-main">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.path}
+                className={`dash-sidebar-item ${
+                  pathname === item.path ? "active" : ""
+                }`}
+                onClick={() => router.push(item.path)}>
+                {/* Icon (optional) */}
+                <span className="icon">•</span>
 
-          {/* ── Page Header ── */}
-          <div className="dash-page-header">
-            <div>
-              <div className="dash-page-eyebrow">Workspace</div>
-              <h1 className="dash-page-title">Dashboard</h1>
-              <p className="dash-page-email">{user?.email}</p>
-            </div>
-          </div>
-
-          {/* ── Stats ── */}
-          <div className="dash-stats-row">
-            <div className={`dash-stat-card ${plan !== 'free' ? 'accent' : ''}`}>
-              <div className="dash-stat-label">Current Plan</div>
-              <div className={`dash-stat-value ${plan !== 'free' ? 'gold' : ''}`}>
-                {plan.charAt(0).toUpperCase() + plan.slice(1)}
-              </div>
-              <div className="dash-stat-sub">{plan === 'free' ? '3 gens/month' : 'Unlimited generations'}</div>
-            </div>
-
-            <div className="dash-stat-card">
-              <div className="dash-stat-label">Used This Month</div>
-              <div className="dash-stat-value">{usage?.used || 0}</div>
-              <div className="dash-stat-sub">{resetDate ? `Resets ${resetDate}` : 'Unlimited'}</div>
-            </div>
-
-            <div className={`dash-stat-card ${(usage?.remaining ?? 1) === 0 && plan === 'free' ? 'warn' : ''}`}>
-              <div className="dash-stat-label">Remaining</div>
-              <div className={`dash-stat-value ${(usage?.remaining ?? 1) === 0 && plan === 'free' ? 'red' : ''}`}>
-                {plan === 'free' ? `${usage?.remaining ?? 0}` : '∞'}
-              </div>
-              <div className="dash-stat-sub">
-                {plan === 'free' ? `of ${usage?.limit} free` : 'No limit on this plan'}
-              </div>
-            </div>
-
-            <div className="dash-stat-card">
-              <div className="dash-stat-label">All Time</div>
-              <div className="dash-stat-value">{history.length}</div>
-              <div className="dash-stat-sub">Content packs generated</div>
-            </div>
-          </div>
-
-          {/* Usage bar */}
-          {plan === 'free' && (
-            <div className="dash-usage-bar-wrap">
-              <div className="dash-usage-bar-header">
-                <span className="dash-usage-bar-label">Monthly usage</span>
-                <span className="dash-usage-bar-pct">{usage?.used || 0} / {usage?.limit}</span>
-              </div>
-              <div className="dash-usage-bar-track">
-                <div
-                  className={`dash-usage-bar-fill ${usagePct >= 100 ? 'warn' : usagePct >= 66 ? 'mid' : ''}`}
-                  style={{ width: `${usagePct}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Upgrade banner */}
-          {plan === 'free' && (usage?.remaining ?? 1) === 0 && (
-            <div className="dash-upgrade-banner">
-              <div>
-                <div className="dash-upgrade-title">Monthly limit reached.</div>
-                <div className="dash-upgrade-sub">
-                  Upgrade to Creator Pro for unlimited generations and all 8 AI agents.
-                </div>
-              </div>
-              <button className="dash-upgrade-btn" onClick={() => router.push('/#pricing')}>
-                Upgrade — ₹399/mo
+                {/* Label (hide when collapsed) */}
+                {sidebarOpen && <span>{item.label}</span>}
               </button>
-            </div>
-          )}
+            ))}
 
-          {/* ── Generation History ── */}
-          <div className="dash-section">
-            <div className="dash-section-header">
-              <h2 className="dash-section-title">Recent Generations</h2>
-              {history.length > 0 && (
-                <span className="dash-section-count">{history.length}</span>
-              )}
+            {/* Bottom Profile */}
+            <div className="dash-sidebar-footer">
+              <div className="avatar">{user?.email?.[0]?.toUpperCase()}</div>
             </div>
+          </aside>
 
-            {history.length === 0 ? (
-              <div className="dash-empty">
-                <span className="dash-empty-icon">◈</span>
-                <h3 className="dash-empty-title">No generations yet</h3>
-                <p className="dash-empty-sub">
-                  Your content packs will appear here after your first generation. It takes under 90 seconds.
-                </p>
-                <button className="dash-empty-cta" onClick={() => router.push('/generate')}>
-                  Generate your first content pack →
+          {/* Main Content */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            {/* ── Topbar ── */}
+            <header className="dash-topbar">
+              <div className="dash-topbar-left">
+                <div className="dash-logo-box">
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
+                    <polygon
+                      points="10,2 17,6 17,14 10,18 3,14 3,6"
+                      stroke="#FFFFFF"
+                      strokeWidth="1.4"
+                      fill="none"
+                    />
+                    <polygon
+                      points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5"
+                      fill="#FFFFFF"
+                      fillOpacity="0.3"
+                    />
+                  </svg>
+                </div>
+                <span className="dash-brand">Studio AI</span>
+                <span className="dash-sep">/</span>
+                <span className="dash-crumb">Dashboard</span>
+              </div>
+              <div className="dash-topbar-right">
+                <button
+                  className="dash-nav-btn"
+                  onClick={() => router.push("/agents")}>
+                  Agents
+                </button>
+                <button
+                  className="dash-generate-btn"
+                  onClick={() => router.push("/generate")}>
+                  + Generate →
+                </button>
+                <button
+                  className="dash-nav-btn"
+                  style={{ marginLeft: 8 }}
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    router.push("/login");
+                  }}>
+                  Sign out
                 </button>
               </div>
-            ) : (
-              <div className="dash-table">
-                <div className="dash-table-header">
-                  <span className="dash-table-col-head">Niche / Topic</span>
-                  <span className="dash-table-col-head">Platform</span>
-                  <span className="dash-table-col-head">Type</span>
-                  <span className="dash-table-col-head">Date</span>
-                </div>
-                <div className="dash-table-body">
-                  {history.map(gen => (
-                    <div
-                      className="dash-table-row"
-                      key={gen.id}
-                      onClick={() => {/* could link to result detail */}}
-                    >
-                      <div>
-                        <div className="dash-table-topic">
-                          {gen.chosen_topic || gen.niche}
-                        </div>
-                        {gen.chosen_hook && (
-                          <div className="dash-table-hook">"{gen.chosen_hook}"</div>
-                        )}
-                      </div>
-                      <div>
-                        <span className="dash-platform-chip">{gen.platform}</span>
-                      </div>
-                      <div>
-                        <span className="dash-type-text">{gen.creator_type}</span>
-                      </div>
-                      <div>
-                        <span className="dash-date-text">
-                          {new Date(gen.generated_at).toLocaleDateString('en-IN',{ day:'numeric', month:'short' })}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+            </header>
+
+            <main className="dash-main">
+              {/* ── Page Header ── */}
+              <div className="dash-page-header">
+                <div>
+                  <div className="dash-page-eyebrow">Workspace</div>
+                  <h1 className="dash-page-title">Dashboard</h1>
+                  <p className="dash-page-email">{user?.email}</p>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* ── Plan & Features ── */}
-          <div className="dash-section">
-            <div className="dash-section-header">
-              <h2 className="dash-section-title">Your Plan</h2>
-            </div>
-
-            <div className="dash-plan-grid">
-              <div className="dash-plan-card">
-                <div>
-                  <div className="dash-plan-label">Active Plan</div>
-                  <div className="dash-plan-name">
+              {/* ── Stats ── */}
+              <div className="dash-stats-row">
+                <div
+                  className={`dash-stat-card ${plan !== "free" ? "accent" : ""}`}>
+                  <div className="dash-stat-label">Current Plan</div>
+                  <div
+                    className={`dash-stat-value ${plan !== "free" ? "gold" : ""}`}>
                     {plan.charAt(0).toUpperCase() + plan.slice(1)}
                   </div>
+                  <div className="dash-stat-sub">
+                    {plan === "free" ? "3 gens/month" : "Unlimited generations"}
+                  </div>
                 </div>
-                {plan === 'free' && (
+
+                <div className="dash-stat-card">
+                  <div className="dash-stat-label">Used This Month</div>
+                  <div className="dash-stat-value">{usage?.used || 0}</div>
+                  <div className="dash-stat-sub">
+                    {resetDate ? `Resets ${resetDate}` : "Unlimited"}
+                  </div>
+                </div>
+
+                <div
+                  className={`dash-stat-card ${(usage?.remaining ?? 1) === 0 && plan === "free" ? "warn" : ""}`}>
+                  <div className="dash-stat-label">Remaining</div>
+                  <div
+                    className={`dash-stat-value ${(usage?.remaining ?? 1) === 0 && plan === "free" ? "red" : ""}`}>
+                    {plan === "free" ? `${usage?.remaining ?? 0}` : "∞"}
+                  </div>
+                  <div className="dash-stat-sub">
+                    {plan === "free"
+                      ? `of ${usage?.limit} free`
+                      : "No limit on this plan"}
+                  </div>
+                </div>
+
+                <div className="dash-stat-card">
+                  <div className="dash-stat-label">All Time</div>
+                  <div className="dash-stat-value">{history.length}</div>
+                  <div className="dash-stat-sub">Content packs generated</div>
+                </div>
+              </div>
+
+              {/* Usage bar */}
+              {plan === "free" && (
+                <div className="dash-usage-bar-wrap">
+                  <div className="dash-usage-bar-header">
+                    <span className="dash-usage-bar-label">Monthly usage</span>
+                    <span className="dash-usage-bar-pct">
+                      {usage?.used || 0} / {usage?.limit}
+                    </span>
+                  </div>
+                  <div className="dash-usage-bar-track">
+                    <div
+                      className={`dash-usage-bar-fill ${usagePct >= 100 ? "warn" : usagePct >= 66 ? "mid" : ""}`}
+                      style={{ width: `${usagePct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Upgrade banner */}
+              {plan === "free" && (usage?.remaining ?? 1) === 0 && (
+                <div className="dash-upgrade-banner">
+                  <div>
+                    <div className="dash-upgrade-title">
+                      Monthly limit reached.
+                    </div>
+                    <div className="dash-upgrade-sub">
+                      Upgrade to Creator Pro for unlimited generations and all 8
+                      AI agents.
+                    </div>
+                  </div>
                   <button
-                    className="dash-view-plans-btn"
-                    onClick={() => router.push('/#pricing')}
-                  >
-                    View Plans →
+                    className="dash-upgrade-btn"
+                    onClick={() => router.push("/#pricing")}>
+                    Upgrade — ₹399/mo
                   </button>
+                </div>
+              )}
+
+              {/* ── Generation History ── */}
+              <div className="dash-section">
+                <div className="dash-section-header">
+                  <h2 className="dash-section-title">Recent Generations</h2>
+                  {history.length > 0 && (
+                    <span className="dash-section-count">{history.length}</span>
+                  )}
+                </div>
+
+                {history.length === 0 ? (
+                  <div className="dash-empty">
+                    <span className="dash-empty-icon">◈</span>
+                    <h3 className="dash-empty-title">No generations yet</h3>
+                    <p className="dash-empty-sub">
+                      Your content packs will appear here after your first
+                      generation. It takes under 90 seconds.
+                    </p>
+                    <button
+                      className="dash-empty-cta"
+                      onClick={() => router.push("/generate")}>
+                      Generate your first content pack →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="dash-table">
+                    <div className="dash-table-header">
+                      <span className="dash-table-col-head">Niche / Topic</span>
+                      <span className="dash-table-col-head">Platform</span>
+                      <span className="dash-table-col-head">Type</span>
+                      <span className="dash-table-col-head">Date</span>
+                    </div>
+                    <div className="dash-table-body">
+                      {history.map((gen) => (
+                        <div
+                          className="dash-table-row"
+                          key={gen.id}
+                          onClick={() => {
+                            /* could link to result detail */
+                          }}>
+                          <div>
+                            <div className="dash-table-topic">
+                              {gen.chosen_topic || gen.niche}
+                            </div>
+                            {gen.chosen_hook && (
+                              <div className="dash-table-hook">
+                                "{gen.chosen_hook}"
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <span className="dash-platform-chip">
+                              {gen.platform}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="dash-type-text">
+                              {gen.creator_type}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="dash-date-text">
+                              {new Date(gen.generated_at).toLocaleDateString(
+                                "en-IN",
+                                { day: "numeric", month: "short" },
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 
-              <div className="dash-features-card">
-                {[
-                  { label:'Research Agent',   active:true,  note:'Free' },
-                  { label:'Creator Agent',    active:true,  note:'Free' },
-                  { label:'Publisher Agent',  active:true,  note:'Free' },
-                  { label:'Hook Upgrader',    active:plan !== 'free', note:'Pro+' },
-                  { label:'Title Battle',     active:plan !== 'free', note:'Pro+' },
-                  { label:'Competitor Autopsy',active:plan === 'studio', note:'Studio' },
-                  { label:'Script Localiser', active:plan === 'studio', note:'Studio' },
-                ].map(f => (
-                  <div className="dash-feature-row" key={f.label}>
-                    <div
-                      className="dash-feature-dot"
-                      style={{ background: f.active ? '#0E7C4A' : '#E8E8E8' }}
-                    />
-                    <span className={`dash-feature-text ${f.active ? '' : 'inactive'}`}>{f.label}</span>
-                    <span className="dash-feature-badge">{f.note}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+              {/* ── Plan & Features ── */}
+              <div className="dash-section">
+                <div className="dash-section-header">
+                  <h2 className="dash-section-title">Your Plan</h2>
+                </div>
 
-        </main>
+                <div className="dash-plan-grid">
+                  <div className="dash-plan-card">
+                    <div>
+                      <div className="dash-plan-label">Active Plan</div>
+                      <div className="dash-plan-name">
+                        {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                      </div>
+                    </div>
+                    {plan === "free" && (
+                      <button
+                        className="dash-view-plans-btn"
+                        onClick={() => router.push("/#pricing")}>
+                        View Plans →
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="dash-features-card">
+                    {[
+                      { label: "Research Agent", active: true, note: "Free" },
+                      { label: "Creator Agent", active: true, note: "Free" },
+                      { label: "Publisher Agent", active: true, note: "Free" },
+                      {
+                        label: "Hook Upgrader",
+                        active: plan !== "free",
+                        note: "Pro+",
+                      },
+                      {
+                        label: "Title Battle",
+                        active: plan !== "free",
+                        note: "Pro+",
+                      },
+                      {
+                        label: "Competitor Autopsy",
+                        active: plan === "studio",
+                        note: "Studio",
+                      },
+                      {
+                        label: "Script Localiser",
+                        active: plan === "studio",
+                        note: "Studio",
+                      },
+                    ].map((f) => (
+                      <div className="dash-feature-row" key={f.label}>
+                        <div
+                          className="dash-feature-dot"
+                          style={{
+                            background: f.active ? "#0E7C4A" : "#E8E8E8",
+                          }}
+                        />
+                        <span
+                          className={`dash-feature-text ${f.active ? "" : "inactive"}`}>
+                          {f.label}
+                        </span>
+                        <span className="dash-feature-badge">{f.note}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
       </div>
     </>
   );
