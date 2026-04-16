@@ -843,7 +843,7 @@ export default function DashboardPage() {
                   style={{ marginLeft: 8 }}
                   onClick={async () => {
                     await supabase.auth.signOut();
-                    router.push("/login");
+
                   }}>
                   Sign out
                 </button>
