@@ -54,7 +54,7 @@ export const MIN_LENGTHS = {
   full_script:               500,   // short-form minimum; long-form checked separately
   shorts_script:             100,
   voiceover:                 20,
-  psychological_mechanism:   80,
+  psychological_mechanism:   70,
   what_viewer_is_thinking:   40,
 
   // Publisher fields
@@ -225,8 +225,8 @@ export function validateCreator(data) {
   }
 
   // scenes array
-  if (!Array.isArray(data.scenes) || data.scenes.length < 3) {
-    issues.push({ field: 'scenes', severity: 'critical', message: 'At least 3 scenes required' });
+  if (!Array.isArray(data.scenes) || data.scenes.length < 2) {
+    issues.push({ field: 'scenes', severity: 'critical', message: 'At least 2 scenes required' });
   } else {
     data.scenes.forEach((scene, i) => {
       if (!scene.voiceover || scene.voiceover.length < 15) {
