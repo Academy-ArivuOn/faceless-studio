@@ -4,382 +4,424 @@ import { useEffect, useRef, useState } from 'react'
 const TIERS = [
   {
     id: 'core',
-    label: 'Tier 1 — Core',
-    color: '#C9A435',
-    bg: 'rgba(201,164,53,0.07)',
-    planLabel: 'Free + Pro',
+    name: 'Core Agents',
+    plan: 'Free',
+    planColor: '#059669',
+    planBg: '#ECFDF5',
+    planBorder: '#6EE7B7',
+    color: '#D4A847',
     agents: [
-      {
-        icon: '🔍', name: 'Research Agent',
-        desc: 'Scans trending topics in your niche in real-time. Identifies viral angles and competitor gaps.',
-        tags: ['Trend Analysis', 'Gap Finding', 'Hook Selection'],
-      },
-      {
-        icon: '✍️', name: 'Creator Agent',
-        desc: 'Writes full word-for-word scripts with scene-by-scene direction and voiceover tone guidance.',
-        tags: ['Full Script', 'Scene Breakdown', 'Voice Direction'],
-      },
-      {
-        icon: '🚀', name: 'Publisher Agent',
-        desc: 'Generates YouTube SEO, Instagram captions, TikTok hooks and hashtags — all ready to paste.',
-        tags: ['YouTube SEO', 'Captions', 'Hashtags'],
-      },
-    ],
-  },
-  {
-    id: 'retention',
-    label: 'Tier 2 — Retention',
-    color: '#4A90D9',
-    bg: 'rgba(74,144,217,0.07)',
-    planLabel: 'Pro',
-    agents: [
-      {
-        icon: '📡', name: 'Trend Spy Agent',
-        desc: 'Morning brief: what\'s blowing up in your niche in the last 48 hours with ready-to-use angles.',
-        tags: ['Daily Trends', 'Morning Brief', 'Niche-specific'],
-      },
-      {
-        icon: '🥊', name: 'Title A/B Battle',
-        desc: 'Generates 10 title variations, scores each on CTR psychology, SEO strength, and emotional pull.',
-        tags: ['CTR Scoring', 'A/B Testing', 'Psychology'],
-      },
-      {
-        icon: '🖼️', name: 'Thumbnail Brain',
-        desc: 'AI-generated thumbnail brief: colors, layout, text, expression — everything your designer needs.',
-        tags: ['Color Psychology', 'Layout Guide', 'Canva Brief'],
-      },
-      {
-        icon: '⚡', name: 'Hook Upgrader',
-        desc: 'Paste any weak hook — get 5 rewrites using different psychological triggers with explained reasoning.',
-        tags: ['5 Variants', 'Psychology Tags', 'Trigger Analysis'],
-      },
-      {
-        icon: '💬', name: 'Comment Reply',
-        desc: 'Paste top comments, get perfectly crafted replies that encourage engagement and tease next video.',
-        tags: ['Engagement', 'Algorithm Signal', 'On-brand Voice'],
-      },
-    ],
+      { icon: '🔍', name: 'Research Agent', tags: ['Trend Analysis', 'Gap Finding', 'Hook Psychology'], desc: 'Scans millions of trending topics, identifies competitor gaps, and selects the highest-virality angle for your niche.' },
+      { icon: '✍️', name: 'Creator Agent', tags: ['Full Script', 'Scene Breakdown', 'Voice Direction'], desc: 'Writes every word of your production script with scene-by-scene direction, B-roll search terms, and voiceover cues.' },
+      { icon: '🚀', name: 'Publisher Agent', tags: ['YouTube SEO', 'Social Captions', '7-Day Plan'], desc: 'Generates YouTube titles, descriptions, tags, Instagram captions, TikTok hooks, and a complete 7-day sprint calendar.' },
+    ]
   },
   {
     id: 'pro',
-    label: 'Tier 3 — Pro Power',
-    color: '#50C878',
-    bg: 'rgba(80,200,120,0.07)',
-    planLabel: 'Studio',
+    name: 'Pro Agents',
+    plan: 'Pro',
+    planColor: '#2563EB',
+    planBg: '#EFF6FF',
+    planBorder: '#BFDBFE',
+    color: '#2563EB',
     agents: [
-      {
-        icon: '🔬', name: 'Competitor Autopsy',
-        desc: 'Dissects any competitor channel — hook patterns, title formulas, thumbnail codes, upload schedule.',
-        tags: ['Hook Pattern', 'Title Formula', 'Gap Analysis'],
-      },
-      {
-        icon: '🔄', name: 'Viral Reverse Engineer',
-        desc: 'Decode why any viral video worked. Get the exact formula to replicate it in your niche.',
-        tags: ['Viral Formula', 'Niche Adaptation', 'Template'],
-      },
-      {
-        icon: '📊', name: 'Channel Strategy',
-        desc: '5-question intake → 90-day content strategy, upload cadence, what to own, what to avoid.',
-        tags: ['90-Day Plan', 'Positioning', 'Growth Strategy'],
-      },
-      {
-        icon: '🌏', name: 'Script Localisation',
-        desc: 'Rewrite scripts in Hindi, Tamil, Telugu, Kannada — culturally adapted, not just translated.',
-        tags: ['Hindi', 'Tamil', 'Telugu', 'Kannada'],
-      },
-      {
-        icon: '💰', name: 'Monetisation Coach',
-        desc: 'Niche-specific revenue roadmap: AdSense CPM, affiliate programs, sponsor rates and pitch templates.',
-        tags: ['CPM Estimates', 'Affiliate Maps', 'Sponsor Pitch'],
-      },
-    ],
+      { icon: '📡', name: 'Trend Spy', tags: ['48hr Brief', 'Daily Trends', 'Niche-specific'], desc: 'Morning brief: what\'s blowing up in your niche in the last 48 hours with ready-to-use content angles.' },
+      { icon: '🥊', name: 'Title Battle', tags: ['10 Variants', 'CTR Scoring', 'A/B Testing'], desc: '10 title variations ranked by CTR psychology, SEO strength, and emotional pull — with full reasoning.' },
+      { icon: '🖼️', name: 'Thumbnail Brain', tags: ['Color Psychology', 'Layout Guide', 'AI Prompt'], desc: 'Complete thumbnail brief: colors, layout, text overlay, expression — and an AI image prompt ready to use.' },
+      { icon: '⚡', name: 'Hook Upgrader', tags: ['5 Rewrites', 'Psychology Tags', 'Trigger Analysis'], desc: 'Paste any weak hook. Get 5 rewrites using different psychological triggers with explained reasoning.' },
+      { icon: '💬', name: 'Comment Reply', tags: ['Algorithm Signal', 'Engagement', 'On-brand Voice'], desc: 'Paste top comments. Get perfectly crafted replies that re-engage viewers and signal the algorithm.' },
+    ]
+  },
+  {
+    id: 'studio',
+    name: 'Studio Agents',
+    plan: 'Studio',
+    planColor: '#7C3AED',
+    planBg: '#F5F3FF',
+    planBorder: '#DDD6FE',
+    color: '#7C3AED',
+    agents: [
+      { icon: '🔬', name: 'Competitor Autopsy', tags: ['Hook Patterns', 'Title Formula', 'Gap Analysis'], desc: 'Dissects any competitor channel — hook patterns, title formulas, thumbnail codes, upload schedule.' },
+      { icon: '🔄', name: 'Viral Decoder', tags: ['Viral Formula', 'Niche Adaptation', 'Replication Template'], desc: 'Decode why any viral video worked. Extract the exact formula to replicate it in your niche.' },
+      { icon: '📊', name: 'Channel Strategy', tags: ['90-Day Plan', 'Content Pillars', 'Growth Strategy'], desc: '90-day content strategy, upload cadence, what to own, what to avoid — based on 5 intake answers.' },
+      { icon: '🌏', name: 'Script Localiser', tags: ['Hindi', 'Tamil', 'Telugu', 'Kannada'], desc: 'Rewrite scripts in Hindi, Tamil, Telugu, Kannada — culturally adapted, not just translated.' },
+      { icon: '💰', name: 'Monetisation Coach', tags: ['CPM Estimates', 'Affiliate Maps', 'Sponsor Pitch'], desc: 'Niche-specific revenue roadmap: AdSense CPM, affiliate programs, sponsor rates and pitch email templates.' },
+    ]
   },
 ]
 
 export default function AgentsSection() {
-  const [activeTab, setActiveTab] = useState('core')
-  const sectionRef = useRef(null)
+  const [visible, setVisible] = useState(false)
+  const [activeTier, setActiveTier] = useState('core')
+  const ref = useRef(null)
+
+  const tier = TIERS.find(t => t.id === activeTier)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      entries => entries.forEach(e => e.isIntersecting && e.target.classList.add('visible')),
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
       { threshold: 0.1 }
     )
-    sectionRef.current?.querySelectorAll('.animate-on-scroll')
-      .forEach(el => observer.observe(el))
+    if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
   }, [])
-
-  const activeTier = TIERS.find(t => t.id === activeTab)
 
   return (
     <>
       <style>{`
         .agents-section {
-          background: var(--gray-50);
-          padding: var(--section-pad) 0;
+          padding: 120px 0;
+          background: #ffffff;
+          overflow: hidden;
         }
 
+        .agents-inner {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px;
+        }
+
+        .agents-header {
+          text-align: center;
+          margin-bottom: 60px;
+        }
+
+        .agents-eyebrow {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #6B7280;
+          margin-bottom: 20px;
+          display: block;
+        }
+
+        .agents-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: clamp(36px, 5vw, 58px);
+          font-weight: 800;
+          color: #0A0A0A;
+          letter-spacing: -0.04em;
+          line-height: 1.08;
+          margin-bottom: 20px;
+        }
+
+        .agents-sub {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 18px;
+          color: #374151;
+          max-width: 520px;
+          margin: 0 auto;
+          line-height: 1.7;
+        }
+
+        /* Tier tabs */
         .tier-tabs {
           display: flex;
-          gap: 8px;
           justify-content: center;
-          margin-top: 2.5rem;
-          margin-bottom: 3rem;
+          gap: 10px;
+          margin-bottom: 48px;
           flex-wrap: wrap;
         }
 
         .tier-tab {
-          padding: 10px 22px;
-          border-radius: 100px;
-          border: 1.5px solid var(--gray-200);
-          background: transparent;
-          font-family: var(--font-display);
-          font-size: 0.85rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.25s ease;
-          color: var(--gray-600);
           display: flex;
           align-items: center;
           gap: 8px;
+          padding: 10px 22px;
+          border-radius: 100px;
+          border: 1.5px solid #E5E7EB;
+          background: #ffffff;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: #374151;
+          cursor: pointer;
+          transition: all 0.2s ease;
         }
 
         .tier-tab:hover {
-          border-color: var(--gold-300);
-          color: var(--navy-900);
+          border-color: #0A0A0A;
+          color: #0A0A0A;
         }
 
         .tier-tab.active {
-          color: var(--navy-950);
-          box-shadow: 0 4px 16px rgba(201,164,53,0.2);
+          background: #0A0A0A;
+          border-color: #0A0A0A;
+          color: #ffffff;
         }
 
-        .tier-tab-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-        }
-
-        .tier-plan-badge {
-          font-size: 0.68rem;
+        .tier-plan-chip {
           padding: 2px 8px;
           border-radius: 100px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
           font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .tier-tab.active .tier-plan-chip {
+          background: rgba(255,255,255,0.15);
+          color: rgba(255,255,255,0.8);
         }
 
         /* Agent grid */
         .agents-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 1.25rem;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 18px;
+          margin-bottom: 60px;
         }
 
-        .agent-tile {
-          background: var(--white);
-          border: 1px solid var(--gray-100);
-          border-radius: var(--radius-lg);
-          padding: 1.75rem;
-          transition: all 0.3s ease;
+        .agent-card {
+          background: #ffffff;
+          border: 1.5px solid #E5E7EB;
+          border-radius: 16px;
+          padding: 24px;
           cursor: default;
+          transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
+          opacity: 0;
+          transform: translateY(20px);
+          animation: agentIn 0.5s ease forwards;
         }
 
-        .agent-tile::before {
+        @keyframes agentIn {
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .agent-card::before {
           content: '';
           position: absolute;
           top: 0; left: 0; right: 0;
           height: 2px;
           background: var(--tier-color);
-          opacity: 0;
-          transition: opacity 0.3s ease;
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform 0.3s ease;
         }
 
-        .agent-tile:hover {
-          border-color: var(--gray-200);
-          box-shadow: 0 8px 32px rgba(11,19,64,0.08);
+        .agent-card:hover {
+          border-color: var(--tier-color);
           transform: translateY(-3px);
+          box-shadow: 0 12px 40px rgba(0,0,0,0.08);
         }
 
-        .agent-tile:hover::before {
-          opacity: 1;
-        }
+        .agent-card:hover::before { transform: scaleX(1); }
 
-        .agent-tile-icon {
-          font-size: 2.2rem;
-          margin-bottom: 0.75rem;
+        .agent-icon {
+          font-size: 24px;
+          margin-bottom: 12px;
           display: block;
         }
 
-        .agent-tile-name {
-          font-family: var(--font-display);
-          font-size: 1.05rem;
+        .agent-name {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 17px;
           font-weight: 700;
-          color: var(--navy-900);
-          margin-bottom: 0.5rem;
+          color: #0A0A0A;
+          margin-bottom: 8px;
+          letter-spacing: -0.02em;
         }
 
-        .agent-tile-desc {
-          font-size: 0.9rem;
-          color: var(--gray-600);
+        .agent-desc {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          color: #374151;
           line-height: 1.65;
-          margin-bottom: 1rem;
+          margin-bottom: 14px;
         }
 
-        .agent-tile-tags {
+        .agent-tags {
           display: flex;
           flex-wrap: wrap;
-          gap: 6px;
+          gap: 5px;
         }
 
-        .agent-tile-tag {
-          font-size: 0.72rem;
-          font-weight: 600;
-          padding: 4px 10px;
+        .agent-tag {
+          padding: 3px 10px;
           border-radius: 100px;
-          font-family: var(--font-display);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          font-weight: 600;
+          background: var(--tier-bg);
+          color: var(--tier-color);
+          border: 1px solid var(--tier-border);
           letter-spacing: 0.02em;
         }
 
-        /* Total count */
-        .agents-count {
+        /* Count banner */
+        .agents-count-bar {
+          background: #0A0A0A;
+          border-radius: 16px;
+          padding: 36px 48px;
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0;
+          opacity: 0;
+          transform: translateY(20px);
+          transition: all 0.7s ease 0.5s;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .agents-count-bar.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .agents-count-bar::before {
+          content: '';
+          position: absolute;
+          top: -100px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 600px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(212,168,71,0.1) 0%, transparent 70%);
+          pointer-events: none;
+        }
+
+        .count-divider {
+          width: 1px;
+          background: rgba(255,255,255,0.08);
+          margin: 0;
+        }
+
+        .count-item {
           text-align: center;
-          margin-top: 3rem;
-          padding: 1.75rem;
-          background: var(--navy-950);
-          border-radius: var(--radius-xl);
-          border: 1px solid rgba(201,164,53,0.12);
+          padding: 0 24px;
+          position: relative;
         }
 
-        .agents-count-number {
-          font-family: var(--font-display);
-          font-size: clamp(2.5rem, 5vw, 4rem);
+        .count-item:not(:last-child)::after {
+          content: '';
+          position: absolute;
+          right: 0;
+          top: 15%;
+          bottom: 15%;
+          width: 1px;
+          background: rgba(255,255,255,0.08);
+        }
+
+        .count-num {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: clamp(36px, 5vw, 54px);
           font-weight: 800;
-          background: linear-gradient(135deg, var(--gold-300), var(--gold-500));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          color: #D4A847;
+          letter-spacing: -0.04em;
           line-height: 1;
+          margin-bottom: 8px;
+          display: block;
         }
 
-        .agents-count-label {
-          font-size: 1rem;
-          color: var(--silver);
-          margin-top: 0.5rem;
+        .count-label {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.9);
+          margin-bottom: 4px;
         }
 
-        .agents-count-sub {
-          font-size: 0.85rem;
-          color: var(--silver-dim);
-          margin-top: 0.35rem;
+        .count-sub {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          color: rgba(255,255,255,0.4);
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
+          .agents-count-bar { 
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            padding: 28px 24px;
+          }
+          .count-item::after { display: none; }
+          .count-item { border-bottom: 1px solid rgba(255,255,255,0.07); padding-bottom: 20px; }
+          .count-item:nth-child(n+3) { border-bottom: none; }
           .agents-grid { grid-template-columns: 1fr; }
+          .agents-section { padding: 80px 0; }
         }
       `}</style>
 
-      <section className="agents-section" id="agents" ref={sectionRef}>
-        <div className="container">
-          <div className="section-header animate-on-scroll">
-            <p className="section-eyebrow" style={{ color: 'var(--gold-500)' }}>The Agent Ecosystem</p>
-            <h2 className="section-title" style={{ color: 'var(--navy-900)' }}>
-              13 agents. <span className="accent">One operating system.</span>
+      <section className="agents-section" id="agents" ref={ref}>
+        <div className="agents-inner">
+          <div className="agents-header">
+            <span className="agents-eyebrow">The Agent Ecosystem</span>
+            <h2 className="agents-title">
+              13 specialised agents.<br />
+              One operating system.
             </h2>
-            <p className="section-sub">
-              Not a single AI doing everything. A structured pipeline of specialists — each one built for exactly one job.
+            <p className="agents-sub">
+              Not a single AI doing everything. A structured pipeline of specialists — each built for exactly one job.
             </p>
           </div>
 
           {/* Tier tabs */}
-          <div className="tier-tabs animate-on-scroll">
+          <div className="tier-tabs">
             {TIERS.map(t => (
               <button
                 key={t.id}
-                className={`tier-tab ${activeTab === t.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(t.id)}
-                style={activeTab === t.id ? {
-                  background: t.bg,
-                  borderColor: t.color,
-                  color: 'var(--navy-950)',
-                } : {}}
+                className={`tier-tab ${activeTier === t.id ? 'active' : ''}`}
+                onClick={() => setActiveTier(t.id)}
               >
-                <span className="tier-tab-dot" style={{ background: t.color }} />
-                {t.label}
+                {t.name}
                 <span
-                  className="tier-plan-badge"
-                  style={{
-                    background: activeTab === t.id ? t.bg : 'var(--gray-100)',
-                    color: activeTab === t.id ? t.color : 'var(--gray-400)',
-                    border: `1px solid ${activeTab === t.id ? t.color : 'transparent'}`,
-                  }}
+                  className="tier-plan-chip"
+                  style={activeTier !== t.id ? {
+                    background: t.planBg,
+                    color: t.planColor,
+                    border: `1px solid ${t.planBorder}`,
+                  } : {}}
                 >
-                  {t.planLabel}
+                  {t.plan}
                 </span>
               </button>
             ))}
           </div>
 
-          {/* Agents grid */}
-          <div className="agents-grid animate-on-scroll">
-            {activeTier?.agents.map((agent, i) => (
+          {/* Agent grid */}
+          <div className="agents-grid" key={activeTier}>
+            {tier?.agents.map((agent, i) => (
               <div
                 key={agent.name}
-                className="agent-tile"
+                className="agent-card"
                 style={{
-                  '--tier-color': activeTier.color,
-                  animationDelay: `${i * 0.05}s`,
+                  '--tier-color': tier.color,
+                  '--tier-bg': tier.agents[0] ? TIERS.find(t => t.id === activeTier)?.plan === 'Free' ? '#FFF9EB' : TIERS.find(t => t.id === activeTier)?.plan === 'Pro' ? '#EFF6FF' : '#F5F3FF' : '#FFF9EB',
+                  '--tier-border': tier.agents[0] ? TIERS.find(t => t.id === activeTier)?.planBorder : '#FDE68A',
+                  animationDelay: `${i * 0.06}s`,
                 }}
               >
-                <span className="agent-tile-icon">{agent.icon}</span>
-                <h3 className="agent-tile-name">{agent.name}</h3>
-                <p className="agent-tile-desc">{agent.desc}</p>
-                <div className="agent-tile-tags">
+                <span className="agent-icon">{agent.icon}</span>
+                <h3 className="agent-name">{agent.name}</h3>
+                <p className="agent-desc">{agent.desc}</p>
+                <div className="agent-tags">
                   {agent.tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="agent-tile-tag"
-                      style={{
-                        background: activeTier.bg,
-                        color: activeTier.color,
-                        border: `1px solid ${activeTier.color}30`,
-                      }}
-                    >
-                      {tag}
-                    </span>
+                    <span key={tag} className="agent-tag">{tag}</span>
                   ))}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Total count bar */}
-          <div className="agents-count animate-on-scroll">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3rem', flexWrap: 'wrap' }}>
-              <div>
-                <div className="agents-count-number">13</div>
-                <p className="agents-count-label">Total AI Agents</p>
+          {/* Count bar */}
+          <div className={`agents-count-bar ${visible ? 'visible' : ''}`}>
+            {[
+              { num: '13', label: 'Total AI Agents', sub: 'Across 3 tiers' },
+              { num: '90s', label: 'Avg Generation Time', sub: 'Full content pack' },
+              { num: '0', label: 'Prompts Required', sub: 'System auto-chains' },
+              { num: '7', label: 'Days Planned', sub: 'Every generation' },
+            ].map((c, i) => (
+              <div key={i} className="count-item">
+                <span className="count-num">{c.num}</span>
+                <div className="count-label">{c.label}</div>
+                <div className="count-sub">{c.sub}</div>
               </div>
-              <div style={{ width: 1, height: 60, background: 'rgba(201,164,53,0.15)', flexShrink: 0 }} className="hide-mobile" />
-              <div>
-                <div className="agents-count-number">3</div>
-                <p className="agents-count-label">Agent Tiers</p>
-              </div>
-              <div style={{ width: 1, height: 60, background: 'rgba(201,164,53,0.15)', flexShrink: 0 }} className="hide-mobile" />
-              <div>
-                <div className="agents-count-number">90s</div>
-                <p className="agents-count-label">Full Pack Generated</p>
-              </div>
-              <div style={{ width: 1, height: 60, background: 'rgba(201,164,53,0.15)', flexShrink: 0 }} className="hide-mobile" />
-              <div>
-                <div className="agents-count-number">0</div>
-                <p className="agents-count-label">Prompts You Write</p>
-                <p className="agents-count-sub">System handles everything</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>

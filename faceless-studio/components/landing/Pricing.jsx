@@ -1,637 +1,524 @@
-'use client';
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { getSupabaseBrowser } from '@/packages/supabase-browser';
+'use client'
+import { useState, useEffect, useRef } from 'react'
 
-const PLATFORMS = ['YouTube', 'Instagram Reels', 'TikTok', 'Podcast', 'Blog', 'YouTube Shorts'];
-const CREATOR_TYPES = [
-  { value: 'general', label: 'General Creator' },
-  { value: 'educator', label: 'Educator' },
-  { value: 'coach', label: 'Coach / Mentor' },
-  { value: 'entertainer', label: 'Entertainer' },
-  { value: 'podcaster', label: 'Podcaster' },
-  { value: 'blogger', label: 'Blogger / Vlogger' },
-  { value: 'agency', label: 'Agency / Brand' },
-];
-const LANGUAGES = ['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Marathi', 'Bengali', 'Gujarati', 'Malayalam', 'Punjabi', 'Spanish', 'French'];
-const TONES = ['Educational', 'Conversational', 'Motivational', 'Entertaining', 'Authoritative', 'Storytelling'];
+const PLANS = [
+  {
+    id: 'free',
+    name: 'Free',
+    price: { monthly: 0, annual: 0 },
+    desc: 'See it work. No card needed.',
+    cta: 'Start Free Now',
+    href: '/generate',
+    featured: false,
+    badge: null,
+    features: [
+      { text: '3 content generations / month', ok: true },
+      { text: 'Research + Creator + Publisher agents', ok: true },
+      { text: 'YouTube platform', ok: true },
+      { text: 'Full script + scene breakdown', ok: true },
+      { text: 'Generation history', ok: false },
+      { text: 'Hook Upgrader + Title Battle', ok: false },
+      { text: '7-day sprint system', ok: false },
+      { text: 'Hindi / Tamil / Telugu mode', ok: false },
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Creator Pro',
+    price: { monthly: 999, annual: 7999 },
+    desc: 'Everything you need to grow a real channel.',
+    cta: 'Start Pro Free →',
+    href: '/checkout?plan=pro',
+    featured: true,
+    badge: 'Most Popular',
+    features: [
+      { text: 'Unlimited generations', ok: true },
+      { text: 'All 8 retention agents', ok: true },
+      { text: 'All platforms (YouTube + Insta + TikTok)', ok: true },
+      { text: 'Full script + hook psychology', ok: true },
+      { text: 'Complete generation history', ok: true },
+      { text: '7-day sprint + streak system', ok: true },
+      { text: 'Hook Upgrader + Title A/B Battle', ok: true },
+      { text: 'Hindi / Tamil / Telugu mode', ok: true },
+    ],
+  },
+  {
+    id: 'studio',
+    name: 'Studio',
+    price: { monthly: 2499, annual: 19999 },
+    desc: 'For agencies managing multiple channels.',
+    cta: 'Get Studio →',
+    href: '/checkout?plan=studio',
+    featured: false,
+    badge: 'For Agencies',
+    features: [
+      { text: 'Everything in Pro', ok: true },
+      { text: 'All 13 agents incl. Pro Power tier', ok: true },
+      { text: 'Competitor Autopsy + Viral Decoder', ok: true },
+      { text: 'Channel Strategy + Monetisation Coach', ok: true },
+      { text: 'Script Localiser (5 languages)', ok: true },
+      { text: '5 team member seats', ok: true },
+      { text: 'Bulk generation (full month)', ok: true },
+      { text: 'White-label export + API access', ok: true },
+    ],
+  },
+]
 
-const BLOG_TYPES = [
-  { value: 'travel', label: '✈️ Travel Blog', desc: 'Explore a destination, route, or experience' },
-  { value: 'advertisement', label: '📢 Place Advertisement', desc: 'Promote a hotel, resort, or venue' },
-  { value: 'food', label: '🍜 Food & Restaurant', desc: 'Review a dish, restaurant, or food spot' },
-  { value: 'culture', label: '🏛️ Culture & Heritage', desc: 'Explore heritage, festivals, or traditions' },
-  { value: 'event', label: '🎪 Event Coverage', desc: 'Cover a festival, concert, or live event' },
-  { value: 'product_review', label: '⭐ Product Review', desc: 'On-location product or service review' },
-  { value: 'lifestyle', label: '🌅 Lifestyle / Day-in-Life', desc: 'A personal vlog of your daily experience' },
-];
+export default function Pricing() {
+  const [annual, setAnnual] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const ref = useRef(null)
 
-const AGENTS = [
-  { id: 'research', num: '01', label: 'Research', desc: 'Trends, angles & hook psychology', color: '#C9A227' },
-  { id: 'creator', num: '02', label: 'Script', desc: 'Full script, scenes & retention', color: '#2563EB' },
-  { id: 'publisher', num: '03', label: 'Distribute', desc: 'SEO, social captions & 7-day plan', color: '#0E7C4A' },
-];
-
-const AGENT_LOG_SEQUENCES = {
-  research: ['Fetching real-time trend signals...', 'Analysing niche competition gaps...', 'Selecting optimal hook trigger...', '✓ Research complete'],
-  creator: ['Applying creator DNA to script...', 'Writing word-for-word script...', 'Building scene-by-scene breakdown...', '✓ Script complete'],
-  publisher: ['Generating YouTube SEO assets...', 'Writing social captions...', 'Building 7-day content plan...', '✓ Distribution pack ready'],
-};
-
-export default function GeneratePage() {
-  const router = useRouter();
-  const supabase = getSupabaseBrowser();
-
-  const [user, setUser] = useState(null);
-  const [usage, setUsage] = useState(null);
-  const [dna, setDna] = useState(null);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [niche, setNiche] = useState('');
-  const [platform, setPlatform] = useState('YouTube');
-  const [creatorType, setCreatorType] = useState('general');
-  const [language, setLanguage] = useState('English');
-  const [tone, setTone] = useState('Educational');
-  const [creatorMode, setCreatorMode] = useState('faceless');
-  const [blogType, setBlogType] = useState('travel');
-  const [location, setLocation] = useState('');
-  const [running, setRunning] = useState(false);
-  const [agentStatus, setAgentStatus] = useState({});
-  const [currentAgent, setCurrentAgent] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [error, setError] = useState('');
-  const [logs, setLogs] = useState([]);
-  const [streak, setStreak] = useState(0);
-
-  const timerRef   = useRef(null);
-  const startRef   = useRef(null);
-  const logsRef    = useRef(null);
-  const logTimers  = useRef([]);
-
-  const isVlogger = creatorMode === 'blogger';
+  const savings = Math.round(((999 * 12) - 7999) / (999 * 12) * 100)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) { router.replace('/login'); return; }
-      setUser(session.user);
-
-      const [usageRes, profileRes] = await Promise.all([
-        fetch('/api/usage', { headers: { Authorization: `Bearer ${session.access_token}` } }),
-        supabase.from('profiles').select('creator_mode, primary_niche, primary_platform, primary_language, creator_type').eq('id', session.user.id).single(),
-      ]);
-
-      const usageJson = await usageRes.json();
-      if (usageJson.success) setUsage(usageJson.usage);
-
-      if (!profileRes.error && profileRes.data) {
-        const p = profileRes.data;
-        setDna(p);
-        if (p.creator_mode && ['faceless', 'face', 'blogger'].includes(p.creator_mode)) setCreatorMode(p.creator_mode);
-        if (p.primary_niche) setNiche(p.primary_niche);
-        if (p.primary_platform && PLATFORMS.includes(p.primary_platform)) setPlatform(p.primary_platform);
-        if (p.primary_language) setLanguage(p.primary_language);
-        if (p.creator_type && CREATOR_TYPES.find(c => c.value === p.creator_type)) setCreatorType(p.creator_type);
-        if (p.creator_type === 'blogger') setCreatorMode('blogger');
-      }
-
-      setPageLoading(false);
-    });
-  }, []);
-
-  function pushLog(msg, type = 'info') {
-    setLogs(prev => {
-      const next = [...prev, { t: new Date().toLocaleTimeString('en', { hour12: false }), msg, type }];
-      setTimeout(() => { if (logsRef.current) logsRef.current.scrollTop = logsRef.current.scrollHeight; }, 40);
-      return next;
-    });
-  }
-
-  function clearLogTimers() { logTimers.current.forEach(t => clearTimeout(t)); logTimers.current = []; }
-  function startTimer() { startRef.current = Date.now(); timerRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 100); }
-  function stopTimer()  { clearInterval(timerRef.current); }
-
-  function startAgentLogs(agentId, delayMs = 0) {
-    const lines = AGENT_LOG_SEQUENCES[agentId] || [];
-    lines.forEach((msg, i) => {
-      const t = setTimeout(() => pushLog(msg, msg.startsWith('✓') ? 'success' : 'agent'), delayMs + i * 900);
-      logTimers.current.push(t);
-    });
-  }
-
-  async function handleGenerate(e) {
-    e.preventDefault();
-    if (!niche.trim() || niche.trim().length < 2) { setError('Enter a niche (minimum 2 characters).'); return; }
-    if (usage && !usage.allowed) { setError('Monthly limit reached. Upgrade your plan to continue.'); return; }
-
-    clearLogTimers();
-    setError(''); setRunning(true); setLogs([]);
-    setAgentStatus({ research: 'running', creator: 'idle', publisher: 'idle' });
-    setCurrentAgent('research');
-    startTimer();
-    pushLog('Pipeline initialised', 'system');
-    if (isVlogger) pushLog(`Blogger mode: ${blogType}${location ? ` @ ${location}` : ''}`, 'system');
-    startAgentLogs('research', 200);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { router.replace('/login'); return; }
-
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({
-          niche: niche.trim(),
-          platform,
-          creatorType: isVlogger ? 'blogger' : creatorType,
-          language,
-          tone,
-          creatorMode,
-          blogType: isVlogger ? blogType : null,
-          location: isVlogger && location.trim() ? location.trim() : null,
-        }),
-      });
-      const json = await res.json();
-
-      clearLogTimers();
-      if (json?.meta?.streak) setStreak(json.meta.streak);
-
-      if (!res.ok || !json.success) {
-        stopTimer(); setRunning(false);
-        setAgentStatus({ research: 'error', creator: 'idle', publisher: 'idle' });
-        setCurrentAgent(null);
-        pushLog(`Error: ${json.error || 'Generation failed'}`, 'error');
-        setError(json.error || 'Generation failed. Please try again.');
-        return;
-      }
-
-      const dur = json.meta?.agent_durations || {};
-      pushLog(`✓ Research complete (${((dur.research || 0) / 1000).toFixed(1)}s) — ${json.research?.trending_angles?.length || 0} angles found`, 'success');
-      setAgentStatus({ research: 'done', creator: 'running', publisher: 'idle' });
-      setCurrentAgent('creator');
-      startAgentLogs('creator', 100);
-
-      await new Promise(r => setTimeout(r, 400));
-
-      clearLogTimers();
-      pushLog(`✓ Script complete — ${json.creator?.word_count || 0} words, ${json.creator?.scenes?.length || 0} scenes (${((dur.creator || 0) / 1000).toFixed(1)}s)`, 'success');
-      setAgentStatus({ research: 'done', creator: 'done', publisher: 'running' });
-      setCurrentAgent('publisher');
-      startAgentLogs('publisher', 100);
-
-      await new Promise(r => setTimeout(r, 400));
-
-      clearLogTimers();
-      pushLog(`✓ Distribution pack complete (${((dur.publisher || 0) / 1000).toFixed(1)}s)`, 'success');
-      setAgentStatus({ research: 'done', creator: 'done', publisher: 'done' });
-      setCurrentAgent(null);
-      pushLog(`Pipeline finished in ${((json.meta?.total_duration_ms || 0) / 1000).toFixed(1)}s`, 'system');
-      stopTimer();
-
-      await new Promise(r => setTimeout(r, 600));
-      sessionStorage.setItem('studioai_result', JSON.stringify(json));
-      router.push('/results');
-    } catch (err) {
-      clearLogTimers();
-      stopTimer(); setRunning(false); setCurrentAgent(null);
-      pushLog(`Network error: ${err.message}`, 'error');
-      setError('Network error. Check your connection and try again.');
-    }
-  }
-
-  if (pageLoading) return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Spinner />
-    </div>
-  );
-
-  const planLabel = usage?.plan === 'free'
-    ? `Free · ${usage?.remaining ?? 0} of ${usage?.limit} remaining`
-    : `${usage?.plan?.charAt(0).toUpperCase() + usage?.plan?.slice(1)} · Unlimited`;
-
-  const selectedBlogType = BLOG_TYPES.find(b => b.value === blogType);
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
+      { threshold: 0.1 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse-ring { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        .pricing-section {
+          padding: 120px 0;
+          background: #ffffff;
+          overflow: hidden;
+        }
 
-        .gen-root { min-height:100vh; background:#FFFFFF; font-family:'DM Sans',sans-serif; color:#0A0A0A; display:flex; flex-direction:column; }
-        .gen-topbar { height:60px; border-bottom:1px solid #E8E8E8; display:flex; align-items:center; justify-content:space-between; padding:0 32px; background:#FFFFFF; position:sticky; top:0; z-index:100; }
-        .gen-topbar-left { display:flex; align-items:center; gap:10px; }
-        .gen-logo-box { width:30px; height:30px; background:#0A0A0A; border-radius:7px; display:flex; align-items:center; justify-content:center; }
-        .gen-brand { font-family:'Playfair Display',serif; font-size:16px; font-weight:700; color:#0A0A0A; letter-spacing:-0.02em; }
-        .gen-sep { color:#E8E8E8; font-size:16px; margin:0 2px; }
-        .gen-crumb { font-size:14px; color:#8C8C8C; font-weight:500; }
-        .gen-topbar-right { display:flex; align-items:center; gap:16px; }
-        .gen-plan-chip { font-family:'JetBrains Mono',monospace; font-size:11px; color:#8C8C8C; background:#F5F5F5; border:1px solid #E8E8E8; border-radius:100px; padding:4px 12px; }
-        .gen-streak-badge { display:flex; align-items:center; gap:5px; background:#FFF7ED; border:1px solid #FED7AA; border-radius:100px; padding:4px 12px; font-size:12px; font-weight:600; color:#C2410C; }
-        .gen-btn-ghost { background:none; border:none; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; color:#8C8C8C; cursor:pointer; transition:color 0.15s; padding:0; }
-        .gen-btn-ghost:hover { color:#0A0A0A; }
-        .gen-btn-outline { background:transparent; border:1px solid #E8E8E8; border-radius:7px; padding:7px 14px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; color:#5C5C5C; cursor:pointer; transition:all 0.15s; }
-        .gen-btn-outline:hover { border-color:#0A0A0A; color:#0A0A0A; }
-        .gen-body { display:flex; flex:1; min-height:0; }
+        .pricing-inner {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 0 24px;
+        }
 
-        /* Sidebar */
-        .gen-rail { width:280px; flex-shrink:0; border-right:1px solid #E8E8E8; background:#FAFAFA; padding:28px 24px; display:flex; flex-direction:column; gap:32px; overflow-y:auto; }
-        .gen-rail-label { font-size:10px; font-weight:700; color:#000000; text-transform:uppercase; letter-spacing:0.1em; margin:0; }
-        .gen-agents { display:flex; flex-direction:column; gap:0; }
-        .gen-agent-row { display:flex; align-items:flex-start; gap:14px; padding-bottom:24px; position:relative; }
-        .gen-agent-connector { position:absolute; left:15px; top:38px; width:1px; height:calc(100% - 14px); background:#E8E8E8; transition:background 0.4s; }
-        .gen-agent-connector.done { background:#0A0A0A; }
-        .gen-agent-badge { width:32px; height:32px; border-radius:8px; border:1.5px solid #E8E8E8; background:#FFFFFF; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; color:#BCBCBC; flex-shrink:0; transition:all 0.3s; position:relative; z-index:1; }
-        .gen-agent-badge.running { border-color:#C9A227; background:#FFF9EB; color:#C9A227; }
-        .gen-agent-badge.done { border-color:#0E7C4A; background:#F0FDF4; color:#0E7C4A; font-size:13px; }
-        .gen-agent-badge.error { border-color:#DC2626; background:#FEF2F2; color:#DC2626; }
-        .gen-agent-pulse { width:8px; height:8px; border-radius:50%; background:#C9A227; animation:pulse-ring 1.2s ease-in-out infinite; }
-        .gen-agent-meta { flex:1; padding-top:5px; }
-        .gen-agent-name { font-size:13px; font-weight:600; color:#0A0A0A; margin-bottom:2px; transition:color 0.3s; }
-        .gen-agent-name.running { color:#C9A227; }
-        .gen-agent-name.done { color:#0E7C4A; }
-        .gen-agent-desc { font-size:11px; color:#BCBCBC; line-height:1.5; }
+        .pricing-header {
+          text-align: center;
+          margin-bottom: 56px;
+        }
 
-        /* Terminal */
-        .gen-terminal { border:1px solid #E5E7EB; border-radius:12px; overflow:hidden; background:#FFFFFF; box-shadow:0 8px 30px rgba(0,0,0,0.06); }
-        .gen-term-header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #F1F5F9; background:#FAFAFA; }
-        .gen-term-dot { width:8px; height:8px; border-radius:50%; background:#D1D5DB; }
-        .gen-term-dot.active { background:#22C55E; box-shadow:0 0 8px rgba(34,197,94,0.6); }
-        .gen-term-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:#111827; font-weight:500; }
-        .gen-term-timer { margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:#2563EB; font-weight:600; }
-        .gen-term-body { padding:14px; min-height:140px; max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; background:#FFFFFF; }
-        .gen-term-body::-webkit-scrollbar { width:4px; }
-        .gen-term-body::-webkit-scrollbar-thumb { background:#E5E7EB; border-radius:4px; }
-        .gen-term-empty { font-family:'JetBrains Mono',monospace; font-size:12px; color:#6B7280; }
-        .gen-log-line { display:flex; gap:10px; font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.6; padding:6px 8px; border-radius:6px; transition:background 0.2s; }
-        .gen-log-line:hover { background:#F9FAFB; }
-        .gen-log-ts { color:#9CA3AF; min-width:60px; }
-        .gen-log-info { color:#111827; }
-        .gen-log-success { color:#16A34A; font-weight:500; }
-        .gen-log-error { color:#DC2626; font-weight:500; }
-        .gen-log-agent { color:#2563EB; font-weight:500; }
-        .gen-log-system { color:#6B7280; }
+        .pricing-eyebrow {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #6B7280;
+          margin-bottom: 20px;
+          display: block;
+        }
 
-        /* Main */
-        .gen-main { flex:1; overflow-y:auto; display:flex; justify-content:center; padding:48px 40px 100px; }
-        .gen-main-inner { width:100%; max-width:560px; }
-        .gen-form-header { margin-bottom:36px; }
-        .gen-form-eyebrow { font-family:'JetBrains Mono',monospace; font-size:10px; color:#8C8C8C; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
-        .gen-form-eyebrow::before { content:''; width:20px; height:1px; background:#C9A227; }
-        .gen-form-h1 { font-family:'Playfair Display',serif; font-size:28px; font-weight:800; color:#0A0A0A; letter-spacing:-0.03em; line-height:1.2; margin-bottom:8px; }
-        .gen-form-sub { font-size:14px; color:#5C5C5C; line-height:1.65; }
-        .gen-form { display:flex; flex-direction:column; gap:20px; }
-        .gen-field { display:flex; flex-direction:column; gap:7px; }
-        .gen-label { font-size:11px; font-weight:700; color:#0A0A0A; text-transform:uppercase; letter-spacing:0.06em; }
-        .gen-label-required { color:#C9A227; }
-        .gen-hint { font-size:12px; color:#8C8C8C; line-height:1.5; margin-top:-2px; }
-        .gen-input { padding:13px 16px; background:#FFFFFF; border:1.5px solid #E8E8E8; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px; color:#0A0A0A; outline:none; transition:border-color 0.2s,box-shadow 0.2s; width:100%; }
-        .gen-input::placeholder { color:#BCBCBC; }
-        .gen-input:focus { border-color:#0A0A0A; box-shadow:0 0 0 3px rgba(10,10,10,0.05); }
-        .gen-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        .gen-select { padding:13px 40px 13px 16px; background:#FFFFFF; border:1.5px solid #E8E8E8; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:14px; color:#0A0A0A; outline:none; cursor:pointer; width:100%; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238C8C8C' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; transition:border-color 0.2s; }
-        .gen-select:focus { border-color:#0A0A0A; outline:none; }
+        .pricing-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: clamp(36px, 5vw, 58px);
+          font-weight: 800;
+          color: #0A0A0A;
+          letter-spacing: -0.04em;
+          line-height: 1.08;
+          margin-bottom: 20px;
+        }
 
-        /* 3-mode toggle */
-        .gen-mode-toggle { display:flex; gap:8px; }
-        .gen-mode-btn { flex:1; padding:11px 10px; border:1.5px solid #E8E8E8; border-radius:10px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; background:#FFFFFF; color:#8C8C8C; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:64px; }
-        .gen-mode-btn .mode-emoji { font-size:20px; line-height:1; }
-        .gen-mode-btn.active { border-color:#0A0A0A; color:#0A0A0A; background:#F8F8F8; }
-        .gen-mode-btn.active-vlogger { border-color:#D97706; color:#D97706; background:#FFFBEB; }
-        .gen-mode-btn:hover:not(.active):not(.active-vlogger) { border-color:#D8D8D8; color:#5C5C5C; }
+        .pricing-sub {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 18px;
+          color: #374151;
+          max-width: 500px;
+          margin: 0 auto 32px;
+          line-height: 1.7;
+        }
 
-        /* Blog type selector */
-        .gen-blog-types { display:grid; grid-template-columns:1fr 1fr; gap:8px; animation:fadeIn 0.25s ease; }
-        .gen-blog-type-btn { padding:12px 14px; border:1.5px solid #E8E8E8; border-radius:10px; background:#FFFFFF; cursor:pointer; transition:all 0.2s; text-align:left; display:flex; flex-direction:column; gap:3px; }
-        .gen-blog-type-btn:hover { border-color:#D97706; background:#FFFBEB; }
-        .gen-blog-type-btn.active { border-color:#D97706; background:#FFFBEB; }
-        .gen-blog-type-label { font-size:12px; font-weight:700; color:#0A0A0A; font-family:'DM Sans',sans-serif; }
-        .gen-blog-type-btn.active .gen-blog-type-label { color:#D97706; }
-        .gen-blog-type-desc { font-size:10px; color:#8C8C8C; line-height:1.4; }
+        /* Toggle */
+        .billing-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          padding: 6px;
+          background: #F3F4F6;
+          border-radius: 100px;
+        }
 
-        /* Location field */
-        .gen-location-wrap { animation:fadeIn 0.25s ease; }
-        .gen-location-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:#FFFBEB; border:1px solid #FED7AA; border-radius:6px; font-size:11px; font-weight:600; color:#D97706; font-family:'JetBrains Mono',monospace; margin-top:6px; }
+        .toggle-option {
+          padding: 8px 20px;
+          border-radius: 100px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          font-weight: 600;
+          color: #6B7280;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: none;
+          background: transparent;
+        }
 
-        /* Vlogger DNA badge */
-        .gen-vlogger-badge { display:flex; align-items:center; gap:10px; padding:12px 16px; background:#FFFBEB; border:1px solid #FED7AA; border-radius:10px; animation:fadeIn 0.25s ease; }
-        .gen-vlogger-badge-icon { font-size:20px; flex-shrink:0; }
-        .gen-vlogger-badge-text { font-size:12px; color:#92400E; line-height:1.5; }
-        .gen-vlogger-badge-text strong { color:#D97706; }
+        .toggle-option.active {
+          background: #ffffff;
+          color: #0A0A0A;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
 
-        .gen-dna-badge { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#F0FDF4; border:1px solid #86EFAC; border-radius:8px; font-size:12px; color:#15803D; }
-        .gen-error { background:#FEF2F2; border:1px solid #FCA5A5; border-radius:8px; padding:12px 16px; font-size:13px; color:#DC2626; display:flex; gap:8px; align-items:flex-start; line-height:1.5; }
-        .gen-limit-warn { background:#FFF7ED; border:1px solid #FED7AA; border-radius:8px; padding:12px 16px; font-size:13px; color:#C2410C; display:flex; gap:8px; align-items:center; }
-        .gen-submit { background:#0A0A0A; border:none; border-radius:10px; padding:16px 24px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:700; color:#FFFFFF; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; width:100%; transition:all 0.2s; letter-spacing:-0.01em; margin-top:4px; }
-        .gen-submit.vlogger { background:linear-gradient(135deg, #D97706, #B45309); }
-        .gen-submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 24px rgba(10,10,10,0.2); }
-        .gen-submit.vlogger:hover:not(:disabled) { box-shadow:0 8px 24px rgba(217,119,6,0.35); }
-        .gen-submit:disabled { opacity:0.5; cursor:not-allowed; }
-        .gen-usage-note { text-align:center; font-size:12px; color:#BCBCBC; margin-top:4px; }
-        .gen-divider { display:flex; align-items:center; gap:14px; }
-        .gen-divider-line { flex:1; height:1px; background:#F0F0F0; }
-        .gen-divider-text { font-size:11px; color:#BCBCBC; text-transform:uppercase; letter-spacing:0.06em; font-weight:600; }
+        .savings-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 10px;
+          background: #D1FAE5;
+          border: 1px solid #6EE7B7;
+          border-radius: 100px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 700;
+          color: #059669;
+          letter-spacing: 0.04em;
+          margin-left: 4px;
+        }
 
-        /* Section divider */
-        .gen-section-divider { display:flex; align-items:center; gap:10px; padding:4px 0; }
-        .gen-section-divider-line { flex:1; height:1px; background:#F0F0F0; }
-        .gen-section-divider-label { font-size:10px; font-weight:700; color:#BCBCBC; text-transform:uppercase; letter-spacing:0.08em; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+        /* Plans grid */
+        .plans-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          margin-top: 48px;
+        }
 
-        @media (max-width:768px) { .gen-rail { display:none; } .gen-main { padding:32px 20px 80px; } }
+        .plan-card {
+          border-radius: 20px;
+          padding: 32px;
+          border: 1.5px solid #E5E7EB;
+          background: #ffffff;
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          opacity: 0;
+          transform: translateY(28px);
+          transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .plan-card.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .plan-card:hover {
+          border-color: #0A0A0A;
+          transform: translateY(-4px);
+          box-shadow: 0 16px 60px rgba(0,0,0,0.1);
+        }
+
+        .plan-card.featured {
+          background: #0A0A0A;
+          border-color: #0A0A0A;
+          transform: scale(1.02) translateY(0);
+        }
+
+        .plan-card.featured.visible:hover {
+          transform: scale(1.02) translateY(-4px);
+        }
+
+        .plan-card.featured.visible {
+          opacity: 1;
+          transform: scale(1.02);
+        }
+
+        .plan-badge {
+          position: absolute;
+          top: -13px;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 4px 16px;
+          background: #D4A847;
+          color: #0A0A0A;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          border-radius: 100px;
+          white-space: nowrap;
+          box-shadow: 0 4px 16px rgba(212,168,71,0.4);
+        }
+
+        .plan-name {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 16px;
+          font-weight: 700;
+          color: #0A0A0A;
+          letter-spacing: -0.01em;
+          margin-bottom: 6px;
+        }
+
+        .plan-card.featured .plan-name { color: rgba(255,255,255,0.7); }
+
+        .plan-price-row {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+          margin: 12px 0;
+        }
+
+        .plan-currency {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 22px;
+          font-weight: 700;
+          color: #0A0A0A;
+          line-height: 1;
+        }
+
+        .plan-card.featured .plan-currency { color: #D4A847; }
+
+        .plan-amount {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 52px;
+          font-weight: 800;
+          color: #0A0A0A;
+          letter-spacing: -0.05em;
+          line-height: 1;
+        }
+
+        .plan-card.featured .plan-amount { color: #ffffff; }
+
+        .plan-period {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          color: #6B7280;
+          font-weight: 400;
+        }
+
+        .plan-card.featured .plan-period { color: rgba(255,255,255,0.45); }
+
+        .plan-desc {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          color: #6B7280;
+          line-height: 1.55;
+          padding-bottom: 20px;
+          border-bottom: 1px solid #F3F4F6;
+          margin-bottom: 20px;
+        }
+
+        .plan-card.featured .plan-desc {
+          color: rgba(255,255,255,0.5);
+          border-bottom-color: rgba(255,255,255,0.08);
+        }
+
+        .plan-features {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          flex: 1;
+          margin-bottom: 24px;
+        }
+
+        .plan-feature {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          line-height: 1.45;
+          color: #374151;
+        }
+
+        .plan-card.featured .plan-feature { color: rgba(255,255,255,0.8); }
+
+        .feature-icon-ok {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #D1FAE5;
+          color: #059669;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9px;
+          flex-shrink: 0;
+          margin-top: 1px;
+          font-weight: 700;
+        }
+
+        .plan-card.featured .feature-icon-ok {
+          background: rgba(212,168,71,0.2);
+          color: #D4A847;
+        }
+
+        .feature-icon-no {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #F3F4F6;
+          color: #9CA3AF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9px;
+          flex-shrink: 0;
+          margin-top: 1px;
+          font-weight: 700;
+        }
+
+        .feature-text-no {
+          color: #9CA3AF;
+          text-decoration: line-through;
+          text-decoration-color: #D1D5DB;
+        }
+
+        .plan-cta {
+          display: block;
+          text-align: center;
+          padding: 14px 24px;
+          border-radius: 12px;
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 15px;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.2s ease;
+          letter-spacing: -0.01em;
+        }
+
+        .cta-dark {
+          background: #ffffff;
+          color: #0A0A0A;
+          border: 1.5px solid #E5E7EB;
+        }
+
+        .cta-dark:hover {
+          border-color: #0A0A0A;
+          transform: translateY(-1px);
+        }
+
+        .cta-gold {
+          background: linear-gradient(135deg, #D4A847, #E8CA70);
+          color: #0A0A0A;
+          border: none;
+        }
+
+        .cta-gold:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 36px rgba(212,168,71,0.4);
+        }
+
+        .cta-outline {
+          background: transparent;
+          color: #374151;
+          border: 1.5px solid #E5E7EB;
+        }
+
+        .cta-outline:hover {
+          border-color: #0A0A0A;
+          color: #0A0A0A;
+          transform: translateY(-1px);
+        }
+
+        /* Bottom note */
+        .pricing-note {
+          text-align: center;
+          margin-top: 36px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          color: #6B7280;
+        }
+
+        .pricing-note strong { color: #374151; font-weight: 600; }
+
+        @media (max-width: 900px) {
+          .plans-grid { grid-template-columns: 1fr; max-width: 440px; margin-left: auto; margin-right: auto; }
+          .plan-card.featured { transform: scale(1); }
+          .plan-card.featured.visible { transform: scale(1); }
+          .plan-card.featured.visible:hover { transform: translateY(-4px); }
+          .pricing-section { padding: 80px 0; }
+        }
       `}</style>
 
-      <div className="gen-root">
-        <header className="gen-topbar">
-          <div className="gen-topbar-left">
-            <div className="gen-logo-box">
-              <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-                <polygon points="10,2 17,6 17,14 10,18 3,14 3,6" stroke="#FFFFFF" strokeWidth="1.4" fill="none" />
-                <polygon points="10,6 14,8.5 14,13.5 10,16 6,13.5 6,8.5" fill="#FFFFFF" fillOpacity="0.3" />
-              </svg>
+      <section className="pricing-section" id="pricing" ref={ref}>
+        <div className="pricing-inner">
+          <div className="pricing-header">
+            <span className="pricing-eyebrow">Pricing</span>
+            <h2 className="pricing-title">
+              Start free.<br />
+              Upgrade when it works.
+            </h2>
+            <p className="pricing-sub">
+              No card on signup. The free plan is real — 3 complete generations a month. Upgrade when you're ready.
+            </p>
+
+            <div className="billing-toggle">
+              <button
+                className={`toggle-option ${!annual ? 'active' : ''}`}
+                onClick={() => setAnnual(false)}
+              >
+                Monthly
+              </button>
+              <button
+                className={`toggle-option ${annual ? 'active' : ''}`}
+                onClick={() => setAnnual(true)}
+              >
+                Annual
+                <span className="savings-badge">Save {savings}%</span>
+              </button>
             </div>
-            <span className="gen-brand">Studio AI</span>
-            <span className="gen-sep">/</span>
-            <span className="gen-crumb">Generate</span>
           </div>
-          <div className="gen-topbar-right">
-            <span className="gen-plan-chip">{planLabel}</span>
-            {streak > 0 && <div className="gen-streak-badge">🔥 {streak}-day streak</div>}
-            <button className="gen-btn-ghost" onClick={() => router.push('/dashboard')}>Dashboard</button>
-            <button className="gen-btn-outline" onClick={async () => { await supabase.auth.signOut(); router.push('/login'); }}>Sign out</button>
-          </div>
-        </header>
 
-        <div className="gen-body">
-          {/* Sidebar */}
-          <aside className="gen-rail">
-            <p className="gen-rail-label">Pipeline Status</p>
-            <div className="gen-agents">
-              {AGENTS.map((a, i) => {
-                const st = agentStatus[a.id] || 'idle';
-                return (
-                  <div className="gen-agent-row" key={a.id}>
-                    {i < 2 && <div className={`gen-agent-connector ${st === 'done' ? 'done' : ''}`} />}
-                    <div className={`gen-agent-badge ${st}`}>
-                      {st === 'running' ? <div className="gen-agent-pulse" />
-                        : st === 'done' ? '✓'
-                        : st === 'error' ? '✕'
-                        : a.num}
-                    </div>
-                    <div className="gen-agent-meta">
-                      <div className={`gen-agent-name ${st}`}>{a.label}</div>
-                      <div className="gen-agent-desc">{a.desc}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="plans-grid">
+            {PLANS.map((plan, i) => {
+              const price = annual
+                ? (plan.price.annual > 0 ? Math.round(plan.price.annual / 12) : 0)
+                : plan.price.monthly
 
-            <div className="gen-divider">
-              <div className="gen-divider-line" />
-              <span className="gen-divider-text">Log</span>
-              <div className="gen-divider-line" />
-            </div>
-
-            <div className="gen-terminal">
-              <div className="gen-term-header">
-                <div className={`gen-term-dot ${running ? 'active' : ''}`} />
-                <span className="gen-term-label">{currentAgent ? `${currentAgent} agent` : 'stdout'}</span>
-                {running && <span className="gen-term-timer">{(elapsed / 1000).toFixed(1)}s</span>}
-              </div>
-              <div className="gen-term-body" ref={logsRef}>
-                {logs.length === 0
-                  ? <span className="gen-term-empty">Waiting for pipeline...</span>
-                  : logs.map((l, i) => (
-                    <div className="gen-log-line" key={i}>
-                      <span className="gen-log-ts">{l.t}</span>
-                      <span className={`gen-log-${l.type || 'info'}`}>{l.msg}</span>
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
-          </aside>
-
-          {/* Main form */}
-          <main className="gen-main">
-            <div className="gen-main-inner">
-              <div className="gen-form-header">
-                <div className="gen-form-eyebrow">Content Generation</div>
-                <h1 className="gen-form-h1">
-                  {isVlogger ? 'Generate your vlog script' : 'Generate your content pack'}
-                </h1>
-                <p className="gen-form-sub">
-                  {isVlogger
-                    ? 'Tell us your blog type and location — three AI agents will write your complete vlog script with scene-by-scene filming direction.'
-                    : 'Three AI agents — Research, Creator, Publisher — personalised to your niche and creator style in under 90 seconds.'}
-                </p>
-              </div>
-
-              {dna && (
-                <div className={`${isVlogger ? 'gen-vlogger-badge' : 'gen-dna-badge'}`} style={{ marginBottom: 20 }}>
-                  {isVlogger
-                    ? <>
-                        <span className="gen-vlogger-badge-icon">🎒</span>
-                        <span className="gen-vlogger-badge-text">
-                          <strong>Vlogger mode active</strong> — your script will include camera direction, b-roll suggestions, and location callouts for every scene.
-                        </span>
-                      </>
-                    : <>
-                        <span>🧬</span>
-                        <span>Creator DNA loaded — outputs personalised to your niche and style</span>
-                      </>
-                  }
-                </div>
-              )}
-
-              <form className="gen-form" onSubmit={handleGenerate}>
-
-                {/* Niche */}
-                <div className="gen-field">
-                  <label className="gen-label">
-                    {isVlogger ? 'Niche / Topic' : 'Niche'} <span className="gen-label-required">*</span>
-                  </label>
-                  <input
-                    className="gen-input"
-                    type="text"
-                    placeholder={isVlogger
-                      ? 'e.g. budget travel India, hidden cafes Bangalore, heritage temples Tamil Nadu...'
-                      : 'e.g. personal finance for Indian millennials, AI tools for SaaS founders...'}
-                    value={niche}
-                    onChange={e => setNiche(e.target.value)}
-                    disabled={running}
-                    required
-                    minLength={2}
-                  />
-                  {!isVlogger && (
-                    <span className="gen-hint">Specific beats generic. The more precise the niche, the stronger the output.</span>
-                  )}
-                </div>
-
-                {/* Creator Mode — 3 options */}
-                <div className="gen-field">
-                  <label className="gen-label">Creator Mode</label>
-                  <div className="gen-mode-toggle">
-                    <button
-                      type="button"
-                      className={`gen-mode-btn ${creatorMode === 'faceless' ? 'active' : ''}`}
-                      onClick={() => { setCreatorMode('faceless'); setCreatorType('general'); }}
-                      disabled={running}
-                    >
-                      <span className="mode-emoji">🎬</span>
-                      Faceless
-                    </button>
-                    <button
-                      type="button"
-                      className={`gen-mode-btn ${creatorMode === 'face' ? 'active' : ''}`}
-                      onClick={() => { setCreatorMode('face'); setCreatorType('general'); }}
-                      disabled={running}
-                    >
-                      <span className="mode-emoji">🎥</span>
-                      On Camera
-                    </button>
-                    <button
-                      type="button"
-                      className={`gen-mode-btn ${isVlogger ? 'active-vlogger' : ''}`}
-                      onClick={() => { setCreatorMode('blogger'); setCreatorType('blogger'); }}
-                      disabled={running}
-                    >
-                      <span className="mode-emoji">🎒</span>
-                      Blogger
-                    </button>
-                  </div>
-                  <span className="gen-hint">
-                    {isVlogger
-                      ? 'Vlogger mode — location-aware scripts with camera direction and b-roll suggestions for every scene.'
-                      : creatorMode === 'faceless'
-                      ? 'B-roll search terms, text-on-screen cues, and voiceover direction.'
-                      : 'On-camera direction, body language cues, and energy notes.'}
-                  </span>
-                </div>
-
-                {/* Blog Type — only when vlogger */}
-                {isVlogger && (
-                  <>
-                    <div className="gen-field">
-                      <label className="gen-label">Blog Type <span className="gen-label-required">*</span></label>
-                      <div className="gen-blog-types">
-                        {BLOG_TYPES.map(bt => (
-                          <button
-                            key={bt.value}
-                            type="button"
-                            className={`gen-blog-type-btn ${blogType === bt.value ? 'active' : ''}`}
-                            onClick={() => setBlogType(bt.value)}
-                            disabled={running}
-                          >
-                            <span className="gen-blog-type-label">{bt.label}</span>
-                            <span className="gen-blog-type-desc">{bt.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className="gen-field gen-location-wrap">
-                      <label className="gen-label">Location / Place <span style={{ color: '#BCBCBC', fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10, marginLeft: 6 }}>(optional but recommended)</span></label>
-                      <input
-                        className="gen-input"
-                        type="text"
-                        placeholder="e.g. Hampi, Karnataka · MTR Restaurant, Bangalore · Sunburn Festival, Goa"
-                        value={location}
-                        onChange={e => setLocation(e.target.value)}
-                        disabled={running}
-                      />
-                      {location.trim() && (
-                        <div className="gen-location-badge">
-                          📍 {location.trim()}
-                        </div>
-                      )}
-                      <span className="gen-hint">Adding a location makes scripts dramatically more specific and useful.</span>
-                    </div>
-                  </>
-                )}
-
-                {/* Platform + Creator Type */}
-                <div className="gen-section-divider">
-                  <div className="gen-section-divider-line" />
-                  <span className="gen-section-divider-label">Preferences</span>
-                  <div className="gen-section-divider-line" />
-                </div>
-
-                <div className="gen-grid2">
-                  <div className="gen-field">
-                    <label className="gen-label">Platform</label>
-                    <select className="gen-select" value={platform} onChange={e => setPlatform(e.target.value)} disabled={running}>
-                      {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div className="gen-field">
-                    <label className="gen-label">Creator Type</label>
-                    <select className="gen-select" value={isVlogger ? 'blogger' : creatorType} onChange={e => { if (!isVlogger) setCreatorType(e.target.value); }} disabled={running || isVlogger}>
-                      {CREATOR_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="gen-grid2">
-                  <div className="gen-field">
-                    <label className="gen-label">Script Language</label>
-                    <select className="gen-select" value={language} onChange={e => setLanguage(e.target.value)} disabled={running}>
-                      {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                  </div>
-                  <div className="gen-field">
-                    <label className="gen-label">Tone</label>
-                    <select className="gen-select" value={tone} onChange={e => setTone(e.target.value)} disabled={running}>
-                      {TONES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {error && <div className="gen-error">⚠ {error}</div>}
-
-                {usage?.plan === 'free' && (usage?.remaining ?? 1) === 0 && !error && (
-                  <div className="gen-limit-warn">
-                    ⚠ Monthly limit reached.{' '}
-                    <a href="/dashboard" style={{ color: '#C9A227', textDecoration: 'underline', fontWeight: 600 }}>Upgrade your plan</a>
-                    {' '}to continue.
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className={`gen-submit ${isVlogger ? 'vlogger' : ''}`}
-                  disabled={running || (!usage?.allowed && usage !== null)}
+              return (
+                <div
+                  key={plan.id}
+                  className={`plan-card ${plan.featured ? 'featured' : ''} ${visible ? 'visible' : ''}`}
+                  style={{ transitionDelay: `${i * 0.1}s` }}
                 >
-                  {running
-                    ? <><Spinner size={15} light />Pipeline running…</>
-                    : isVlogger
-                    ? <>🎒 Generate Vlog Script →</>
-                    : <>Run All 3 Agents →</>
-                  }
-                </button>
+                  {plan.badge && <div className="plan-badge">{plan.badge}</div>}
 
-                {usage?.plan === 'free' && (
-                  <p className="gen-usage-note">
-                    {usage.remaining ?? 0} of {usage.limit} free generations remaining this month
-                  </p>
-                )}
-              </form>
-            </div>
-          </main>
+                  <div className="plan-name">{plan.name}</div>
+
+                  <div className="plan-price-row">
+                    {price > 0 && <span className="plan-currency">₹</span>}
+                    <span className="plan-amount">
+                      {price > 0 ? price.toLocaleString('en-IN') : 'Free'}
+                    </span>
+                    {price > 0 && <span className="plan-period">/mo</span>}
+                  </div>
+
+                  {annual && plan.price.annual > 0 && (
+                    <p style={{ fontSize: 12, color: plan.featured ? 'rgba(255,255,255,0.4)' : '#9CA3AF', marginTop: -8, marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                      Billed ₹{plan.price.annual.toLocaleString('en-IN')}/year
+                    </p>
+                  )}
+
+                  <p className="plan-desc">{plan.desc}</p>
+
+                  <ul className="plan-features">
+                    {plan.features.map((f, fi) => (
+                      <li key={fi} className="plan-feature">
+                        {f.ok
+                          ? <span className="feature-icon-ok">✓</span>
+                          : <span className="feature-icon-no">✕</span>
+                        }
+                        <span className={!f.ok ? 'feature-text-no' : ''}>{f.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <a
+                    href={plan.href}
+                    className={`plan-cta ${plan.featured ? 'cta-gold' : plan.id === 'free' ? 'cta-dark' : 'cta-outline'}`}
+                  >
+                    {plan.cta}
+                  </a>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="pricing-note">
+            Secure checkout via <strong>Lemon Squeezy</strong>. INR billing for Indian users. <strong>Cancel anytime.</strong> No questions asked.
+          </p>
         </div>
-      </div>
+      </section>
     </>
-  );
-}
-
-function Spinner({ size = 20, light = false }) {
-  return (
-    <span style={{
-      width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-      border: `2px solid ${light ? 'rgba(255,255,255,0.25)' : '#E8E8E8'}`,
-      borderTopColor: light ? '#FFFFFF' : '#0A0A0A',
-      display: 'inline-block', animation: 'spin 0.7s linear infinite', flexShrink: 0,
-    }} />
-  );
+  )
 }

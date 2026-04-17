@@ -1,488 +1,513 @@
 'use client'
-import React from "react"
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const STEPS = [
   {
     number: '01',
-    icon: '🎯',
     title: 'Tell us your niche',
-    desc: 'Enter your YouTube niche, preferred platform, and tone. That\'s it. Three inputs.',
-    detail: 'No prompt writing. No settings maze. Just "Personal Finance India" → and the system knows exactly what to do.',
+    desc: 'Type your niche, pick a platform and language. Three fields. That\'s the entire setup.',
+    detail: '"Personal Finance India" is enough. The AI understands context, audience, cultural nuance, and platform algorithm behaviour without you explaining any of it.',
+    icon: '🎯',
+    color: '#D4A847',
+    bg: '#FFF9EB',
+    border: '#FDE68A',
   },
   {
     number: '02',
+    title: '13 agents work in sequence',
+    desc: 'Research → Creator → Publisher. Each agent builds on the last. You watch it happen in real time.',
+    detail: 'Agent 1 finds the highest-virality angle in your niche. Agent 2 writes the entire script. Agent 3 produces every distribution asset. Zero back-and-forth.',
     icon: '🤖',
-    title: '13 AI agents get to work',
-    desc: 'Research Agent scans trends. Creator Agent writes your script. Publisher Agent optimises for SEO.',
-    detail: 'Three agents run in sequence. Each one builds on the last. You get consistent, high-quality output every time.',
+    color: '#2563EB',
+    bg: '#EFF6FF',
+    border: '#BFDBFE',
   },
   {
     number: '03',
-    icon: '📦',
     title: 'Pick up your content pack',
-    desc: 'Full script with scene breakdown, hook psychology, YouTube SEO, social captions — all ready to copy and publish.',
-    detail: 'No editing. No rewriting. Copy the title. Copy the script. Hit upload. Done.',
+    desc: 'Script, scenes, hook psychology, SEO titles, captions, and a 7-day plan. All ready to copy and use.',
+    detail: 'No editing. No rewriting. Copy the title. Paste the script. Film. Upload. The system produces output that goes directly to production without modification.',
+    icon: '📦',
+    color: '#059669',
+    bg: '#ECFDF5',
+    border: '#6EE7B7',
   },
 ]
 
-const AGENTS = [
-  {
-    id: 'research',
-    icon: '🔍',
-    name: 'Research Agent',
-    tag: 'Tier 1 — Core',
-    color: '#C9A435',
-    bg: 'rgba(201,164,53,0.08)',
-    border: 'rgba(201,164,53,0.2)',
-    output: [
-      '✓ Top 3 trending angles',
-      '✓ Competitor gap analysis',
-      '✓ Best hook type identified',
-      '✓ Chosen topic + hook',
-    ],
-  },
-  {
-    id: 'creator',
-    icon: '✍️',
-    name: 'Creator Agent',
-    tag: 'Tier 1 — Core',
-    color: '#4A90D9',
-    bg: 'rgba(74,144,217,0.08)',
-    border: 'rgba(74,144,217,0.2)',
-    output: [
-      '✓ Full word-for-word script',
-      '✓ Scene-by-scene direction',
-      '✓ Voiceover tone notes',
-      '✓ Hook psychology explain',
-    ],
-  },
-  {
-    id: 'publisher',
-    icon: '🚀',
-    name: 'Publisher Agent',
-    tag: 'Tier 1 — Core',
-    color: '#50C878',
-    bg: 'rgba(80,200,120,0.08)',
-    border: 'rgba(80,200,120,0.2)',
-    output: [
-      '✓ YouTube title + desc',
-      '✓ 10 SEO-optimised tags',
-      '✓ Instagram caption + tags',
-      '✓ TikTok caption + tags',
-    ],
-  },
+const OUTPUT_TABS = [
+  { id: 'script', label: '📄 Script', desc: 'Full word-for-word production script' },
+  { id: 'scenes', label: '🎬 Scenes', desc: 'Scene-by-scene breakdown with B-roll' },
+  { id: 'hook', label: '🪝 Hook', desc: 'Psychology behind why it works' },
+  { id: 'seo', label: '▶ YouTube SEO', desc: '3 title options + description + 12 tags' },
+  { id: 'social', label: '📱 Social', desc: 'Instagram + TikTok captions' },
+  { id: 'plan', label: '📅 7-Day Plan', desc: 'Full sprint content calendar' },
 ]
-
-const ARROW = () => (
-  <svg width="40" height="24" viewBox="0 0 40 24" fill="none" style={{ flexShrink: 0 }}>
-    <path d="M0 12 L32 12 M24 4 L32 12 L24 20" stroke="rgba(201,164,53,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-)
 
 export default function HowItWorks() {
-  const [activeAgent, setActiveAgent] = useState(0)
-  const sectionRef = useRef(null)
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveAgent(prev => (prev + 1) % 3)
-    }, 2500)
-    return () => clearInterval(timer)
-  }, [])
+  const [visible, setVisible] = useState(false)
+  const [activeTab, setActiveTab] = useState('script')
+  const ref = useRef(null)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(e => {
-          if (e.isIntersecting) {
-            e.target.classList.add('visible')
-          }
-        })
-      },
-      { threshold: 0.15 }
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
+      { threshold: 0.1 }
     )
-    const els = sectionRef.current?.querySelectorAll('.animate-on-scroll')
-    els?.forEach(el => observer.observe(el))
+    if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
   }, [])
 
   return (
     <>
       <style>{`
-        .how-section {
-          background: var(--white);
-          padding: var(--section-pad) 0;
+        .hiw-section {
+          padding: 120px 0;
+          background: #F9FAFB;
+          overflow: hidden;
         }
 
-        .section-header {
+        .hiw-inner {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px;
+        }
+
+        .hiw-header {
           text-align: center;
-          margin-bottom: 4rem;
+          margin-bottom: 80px;
         }
 
-        .section-eyebrow {
-          font-family: var(--font-display);
-          font-size: 0.78rem;
-          font-weight: 700;
+        .hiw-eyebrow {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 600;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: var(--gold-500);
-          margin-bottom: 1rem;
+          color: #6B7280;
+          margin-bottom: 20px;
+          display: block;
         }
 
-        .section-title {
-          font-family: var(--font-display);
-          font-size: clamp(2rem, 4vw, 3rem);
+        .hiw-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: clamp(36px, 5vw, 58px);
           font-weight: 800;
-          letter-spacing: -0.03em;
-          color: var(--navy-900);
-          line-height: 1.15;
-          margin-bottom: 1rem;
+          color: #0A0A0A;
+          letter-spacing: -0.04em;
+          line-height: 1.08;
+          margin-bottom: 20px;
         }
 
-        .section-title .accent {
-          background: linear-gradient(135deg, var(--gold-500), var(--gold-300));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .section-sub {
-          font-size: 1.05rem;
-          color: var(--gray-600);
-          max-width: 560px;
+        .hiw-sub {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 18px;
+          color: #374151;
+          max-width: 520px;
           margin: 0 auto;
           line-height: 1.7;
         }
 
-        /* STEPS */
-        .steps-grid {
+        /* Steps */
+        .hiw-steps {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 2rem;
-          margin-bottom: 5rem;
+          gap: 24px;
+          margin-bottom: 80px;
         }
 
-        .step-card {
-          padding: 2rem;
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--gray-100);
-          background: var(--white);
+        .hiw-step {
+          background: #ffffff;
+          border: 1.5px solid #E5E7EB;
+          border-radius: 20px;
+          padding: 32px;
           position: relative;
-          transition: all 0.3s ease;
+          overflow: hidden;
+          opacity: 0;
+          transform: translateY(30px);
+          transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .step-card:hover {
-          border-color: var(--gold-300);
-          box-shadow: 0 8px 40px rgba(201,164,53,0.1);
+        .hiw-step.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .hiw-step:hover {
+          border-color: var(--step-color);
+          box-shadow: 0 8px 40px rgba(0,0,0,0.07);
           transform: translateY(-4px);
         }
 
-        .step-number {
-          font-family: var(--font-display);
-          font-size: 4rem;
-          font-weight: 800;
-          line-height: 1;
-          background: linear-gradient(135deg, rgba(201,164,53,0.15), rgba(201,164,53,0.05));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 1rem;
-        }
-
-        .step-icon {
-          font-size: 2rem;
-          margin-bottom: 0.75rem;
-          display: block;
-        }
-
-        .step-title {
-          font-family: var(--font-display);
-          font-size: 1.2rem;
-          font-weight: 700;
-          color: var(--navy-900);
-          margin-bottom: 0.6rem;
-        }
-
-        .step-desc {
-          font-size: 0.95rem;
-          color: var(--gray-600);
-          line-height: 1.65;
-          margin-bottom: 0.75rem;
-        }
-
-        .step-detail {
-          font-size: 0.85rem;
-          color: var(--gray-400);
-          line-height: 1.65;
-          border-top: 1px solid var(--gray-100);
-          padding-top: 0.75rem;
-          font-style: italic;
-        }
-
-        /* AGENT PIPELINE */
-        .pipeline-section {
-          background: var(--navy-950);
-          border-radius: var(--radius-xl);
-          padding: clamp(2.5rem, 5vw, 4rem);
-          border: 1px solid rgba(201,164,53,0.1);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .pipeline-section::before {
-          content: '';
+        .hiw-step::before {
+          content: var(--step-num);
           position: absolute;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(201,164,53,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(201,164,53,0.03) 1px, transparent 1px);
-          background-size: 40px 40px;
+          top: 20px;
+          right: 24px;
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 60px;
+          font-weight: 800;
+          color: rgba(0,0,0,0.04);
+          letter-spacing: -0.04em;
+          line-height: 1;
           pointer-events: none;
         }
 
-        .pipeline-header {
-          text-align: center;
-          margin-bottom: 3rem;
-          position: relative;
-          z-index: 1;
-        }
-
-        .pipeline-title {
-          font-family: var(--font-display);
-          font-size: clamp(1.5rem, 3vw, 2.2rem);
-          font-weight: 700;
-          color: var(--white);
-          margin-bottom: 0.5rem;
-        }
-
-        .pipeline-sub {
-          font-size: 0.95rem;
-          color: var(--silver-dim);
-        }
-
-        .pipeline-flow {
+        .step-icon-wrap {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          background: var(--step-bg);
+          border: 1px solid var(--step-border);
           display: flex;
-          align-items: stretch;
-          gap: 0;
-          position: relative;
-          z-index: 1;
+          align-items: center;
+          justify-content: center;
+          font-size: 22px;
+          margin-bottom: 20px;
         }
 
-        .agent-card {
-          flex: 1;
-          background: rgba(11,19,64,0.6);
-          border: 1px solid rgba(201,164,53,0.08);
-          border-radius: var(--radius-lg);
-          padding: 1.75rem;
-          transition: all 0.4s ease;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .agent-card.active {
-          border-color: var(--current-color);
-          box-shadow: 0 0 30px rgba(var(--current-rgb), 0.12);
-          animation: agent-active 0.5s ease;
-        }
-
-        .agent-card::before {
-          content: '';
-          position: absolute;
-          top: 0; left: 0; right: 0;
-          height: 2px;
-          background: linear-gradient(90deg, transparent, var(--current-color), transparent);
-          opacity: 0;
-          transition: opacity 0.4s ease;
-        }
-
-        .agent-card.active::before {
-          opacity: 1;
-        }
-
-        .agent-icon {
-          font-size: 2rem;
-          margin-bottom: 0.75rem;
-          display: block;
-        }
-
-        .agent-tag {
-          font-size: 0.68rem;
-          font-weight: 700;
+        .step-num-label {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--step-color);
           letter-spacing: 0.08em;
           text-transform: uppercase;
-          font-family: var(--font-mono);
-          margin-bottom: 0.5rem;
+          margin-bottom: 10px;
         }
 
-        .agent-name {
-          font-family: var(--font-display);
-          font-size: 1.1rem;
+        .step-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 20px;
           font-weight: 700;
-          color: var(--white);
-          margin-bottom: 1rem;
+          color: #0A0A0A;
+          letter-spacing: -0.02em;
+          margin-bottom: 10px;
+          line-height: 1.2;
         }
 
-        .agent-outputs {
+        .step-desc {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px;
+          color: #374151;
+          line-height: 1.65;
+          margin-bottom: 14px;
+          font-weight: 500;
+        }
+
+        .step-detail {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          color: #6B7280;
+          line-height: 1.65;
+          padding-top: 14px;
+          border-top: 1px solid #F3F4F6;
+        }
+
+        /* Output preview box */
+        .hiw-output {
+          background: #0A0A0A;
+          border-radius: 20px;
+          overflow: hidden;
+          opacity: 0;
+          transform: translateY(30px);
+          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+        }
+
+        .hiw-output.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .output-header {
           display: flex;
-          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 24px;
+          border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .output-title {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: rgba(255,255,255,0.5);
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .output-dots {
+          display: flex;
           gap: 6px;
         }
 
-        .agent-output-line {
-          font-family: var(--font-mono);
-          font-size: 0.78rem;
-          color: rgba(200,208,232,0.6);
-          transition: color 0.3s ease;
+        .output-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
         }
 
-        .agent-card.active .agent-output-line {
-          color: rgba(200,208,232,0.9);
-        }
-
-        .pipeline-arrow {
+        /* Tab bar */
+        .output-tabs {
           display: flex;
-          align-items: center;
-          padding: 0 0.75rem;
-          flex-shrink: 0;
+          overflow-x: auto;
+          border-bottom: 1px solid rgba(255,255,255,0.07);
+          scrollbar-width: none;
         }
 
-        /* Output preview */
-        .pipeline-output {
-          margin-top: 2rem;
-          padding: 1.5rem;
-          background: rgba(201,164,53,0.05);
-          border: 1px solid rgba(201,164,53,0.15);
-          border-radius: var(--radius-md);
+        .output-tabs::-webkit-scrollbar { display: none; }
+
+        .output-tab {
+          padding: 14px 20px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.45);
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -1px;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+          background: none;
+          border-left: none;
+          border-right: none;
+          border-top: none;
+        }
+
+        .output-tab:hover { color: rgba(255,255,255,0.75); }
+
+        .output-tab.active {
+          color: #D4A847;
+          border-bottom-color: #D4A847;
+        }
+
+        .output-body {
+          padding: 32px;
+          min-height: 220px;
+        }
+
+        .output-tab-content {
+          display: none;
+          animation: tabFade 0.3s ease;
+        }
+
+        .output-tab-content.active { display: block; }
+
+        @keyframes tabFade {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .output-preview-title {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-size: 16px;
+          font-weight: 600;
+          color: rgba(255,255,255,0.9);
+          margin-bottom: 12px;
+          letter-spacing: -0.02em;
+        }
+
+        .output-preview-block {
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 10px;
+          padding: 16px 18px;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 13px;
+          color: rgba(255,255,255,0.65);
+          line-height: 1.75;
+          max-height: 140px;
+          overflow: hidden;
           position: relative;
-          z-index: 1;
         }
 
-        .pipeline-output-label {
-          font-family: var(--font-display);
-          font-size: 0.75rem;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: var(--gold-400);
-          margin-bottom: 1rem;
+        .output-preview-block::after {
+          content: '';
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          height: 50px;
+          background: linear-gradient(transparent, rgba(10,10,10,0.9));
+          border-radius: 0 0 10px 10px;
         }
 
-        .output-tags {
+        .output-tag-row {
           display: flex;
           flex-wrap: wrap;
-          gap: 8px;
+          gap: 6px;
+          margin-top: 16px;
         }
 
         .output-tag {
-          padding: 6px 14px;
+          padding: 4px 12px;
+          background: rgba(212,168,71,0.12);
+          border: 1px solid rgba(212,168,71,0.25);
           border-radius: 100px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          font-family: var(--font-display);
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          color: var(--silver);
-          transition: all 0.3s ease;
-        }
-
-        .output-tag:hover {
-          background: rgba(201,164,53,0.1);
-          border-color: rgba(201,164,53,0.25);
-          color: var(--gold-300);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: #D4A847;
         }
 
         @media (max-width: 900px) {
-          .steps-grid { grid-template-columns: 1fr; }
-          .pipeline-flow {
-            flex-direction: column;
-            gap: 1rem;
-          }
-          .pipeline-arrow { transform: rotate(90deg); padding: 0; align-self: center; }
+          .hiw-steps { grid-template-columns: 1fr; gap: 16px; }
+          .hiw-section { padding: 80px 0; }
         }
       `}</style>
 
-      <section className="how-section" id="how-it-works" ref={sectionRef}>
-        <div className="container">
-          <div className="section-header animate-on-scroll">
-            <p className="section-eyebrow">The Process</p>
-            <h2 className="section-title">
-              Three inputs. <span className="accent">Complete content pack.</span>
+      <section className="hiw-section" id="how-it-works" ref={ref}>
+        <div className="hiw-inner">
+          <div className="hiw-header">
+            <span className="hiw-eyebrow">How It Works</span>
+            <h2 className="hiw-title">
+              Three inputs.<br />
+              Complete content pack.
             </h2>
-            <p className="section-sub">
-              No prompts to write. No settings to configure. Just your niche — and a full week of ready-to-publish content.
+            <p className="hiw-sub">
+              No prompts. No setup. No configuration. Just your niche — and a full week of ready-to-publish content.
             </p>
           </div>
 
-          {/* 3 steps */}
-          <div className="steps-grid">
-            {STEPS.map((s, i) => (
-              <div key={s.number} className={`step-card animate-on-scroll animate-delay-${i + 1}`}>
-                <div className="step-number">{s.number}</div>
-                <span className="step-icon">{s.icon}</span>
-                <h3 className="step-title">{s.title}</h3>
-                <p className="step-desc">{s.desc}</p>
-                <p className="step-detail">{s.detail}</p>
+          {/* Steps */}
+          <div className="hiw-steps">
+            {STEPS.map((step, i) => (
+              <div
+                key={step.number}
+                className={`hiw-step ${visible ? 'visible' : ''}`}
+                style={{
+                  '--step-color': step.color,
+                  '--step-bg': step.bg,
+                  '--step-border': step.border,
+                  '--step-num': `"${step.number}"`,
+                  transitionDelay: `${i * 0.12}s`,
+                }}
+              >
+                <div className="step-icon-wrap">
+                  {step.icon}
+                </div>
+                <div className="step-num-label">Step {step.number}</div>
+                <h3 className="step-title">{step.title}</h3>
+                <p className="step-desc">{step.desc}</p>
+                <p className="step-detail">{step.detail}</p>
               </div>
             ))}
           </div>
 
-          {/* Agent pipeline */}
-          <div className="pipeline-section animate-on-scroll">
-            <div className="pipeline-header">
-              <h3 className="pipeline-title">Inside the AI Pipeline</h3>
-              <p className="pipeline-sub">Watch the agents work in real-time sequence</p>
-            </div>
-
-            <div className="pipeline-flow">
-              {AGENTS.map((agent, i) => (
-  <React.Fragment key={agent.id}>
-    <div
-      className={`agent-card ${activeAgent === i ? 'active' : ''}`}
-      style={{
-        '--current-color': agent.color,
-        '--current-rgb':
-          agent.id === 'research'
-            ? '201,164,53'
-            : agent.id === 'creator'
-            ? '74,144,217'
-            : '80,200,120',
-      }}
-    >
-      <span className="agent-icon">{agent.icon}</span>
-      <p className="agent-tag" style={{ color: agent.color }}>{agent.tag}</p>
-      <h4 className="agent-name">{agent.name}</h4>
-
-      <div className="agent-outputs">
-        {agent.output.map((o, idx) => (
-          <span key={`${agent.id}-${idx}`} className="agent-output-line">
-            {o}
-          </span>
-        ))}
-      </div>
-    </div>
-
-    {i < AGENTS.length - 1 && (
-      <div className="pipeline-arrow">
-        <ARROW />
-      </div>
-    )}
-  </React.Fragment>
-))}
-            </div>
-
-            <div className="pipeline-output">
-              <p className="pipeline-output-label">📦 Final output delivered to you</p>
-              <div className="output-tags">
-                {[
-                  '📄 Full Script', '🎬 Scene Breakdown', '🪝 Hook + Psychology',
-                  '▶️ YouTube Title', '📝 Description', '🏷️ 10 SEO Tags',
-                  '📸 Instagram Caption', '🎵 TikTok Caption', '📅 7-Day Plan',
-                  '🧠 Trend Insights',
-                ].map(t => (
-                  <span key={t} className="output-tag">{t}</span>
-                ))}
+          {/* Output preview */}
+          <div className={`hiw-output ${visible ? 'visible' : ''}`}>
+            <div className="output-header">
+              <span className="output-title">📦 What you get — every single time</span>
+              <div className="output-dots">
+                <div className="output-dot" style={{ background: '#EF4444' }} />
+                <div className="output-dot" style={{ background: '#F59E0B' }} />
+                <div className="output-dot" style={{ background: '#10B981' }} />
               </div>
+            </div>
+
+            <div className="output-tabs">
+              {OUTPUT_TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  className={`output-tab ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="output-body">
+              {activeTab === 'script' && (
+                <div className="output-tab-content active">
+                  <div className="output-preview-title">Full Production Script</div>
+                  <div className="output-preview-block">
+                    "Your EMI is about to change. And most people have no idea how much they're about to save — or lose — in the next 60 days.<br /><br />
+                    The RBI just cut interest rates for the first time in four years. That sounds like good news — but here's what they're not telling you about what happens to your home loan, your FD returns, and your monthly budget starting next month.<br /><br />
+                    I'm going to break down exactly what this means for you in three specific scenarios — and what you need to do before the 15th of this month..."
+                  </div>
+                  <div className="output-tag-row">
+                    <span className="output-tag">900+ words</span>
+                    <span className="output-tag">Production-ready</span>
+                    <span className="output-tag">8 scenes</span>
+                    <span className="output-tag">Hook included</span>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'scenes' && (
+                <div className="output-tab-content active">
+                  <div className="output-preview-title">Scene-by-Scene Breakdown</div>
+                  <div className="output-preview-block">
+                    S1 [0:00–0:28] HOOK — Voiceover: "Your EMI is about to change..." / B-roll: family reviewing bank statement / Text: "RBI Rate Cut = Your EMI?" / Tone: urgent, direct<br /><br />
+                    S2 [0:28–1:45] INTRO — Voiceover: "The RBI just cut rates..." / B-roll: RBI building exterior, stock market screens / Overlay: "What this means for you" / Retention: end with "3 scenarios"...
+                  </div>
+                  <div className="output-tag-row">
+                    <span className="output-tag">8 scenes</span>
+                    <span className="output-tag">B-roll search terms</span>
+                    <span className="output-tag">Timestamps</span>
+                    <span className="output-tag">Text overlays</span>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'hook' && (
+                <div className="output-tab-content active">
+                  <div className="output-preview-title">Hook Psychology Analysis</div>
+                  <div className="output-preview-block">
+                    Trigger: LOSS AVERSION — Strength: HIGH<br /><br />
+                    "Your EMI is about to change" uses an immediate personal stake claim. The viewer's brain interprets this as: something is happening to MY money RIGHT NOW. Loss aversion psychology (2.5× more motivating than equivalent gain) activates the amygdala response before rational thought. Combined with "most people have no idea" (social isolation threat), the viewer cannot scroll past without feeling they're choosing to lose money...
+                  </div>
+                  <div className="output-tag-row">
+                    <span className="output-tag">Loss Aversion</span>
+                    <span className="output-tag">Curiosity Gap</span>
+                    <span className="output-tag">Urgency Signal</span>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'seo' && (
+                <div className="output-tab-content active">
+                  <div className="output-preview-title">YouTube SEO Assets</div>
+                  <div className="output-preview-block">
+                    ⭐ Recommended: "RBI Cut ₹3,000 From Your EMI — But Only If You Do This"<br />
+                    Option 2: "Your Home Loan EMI Is About to Change — Here's By How Much"<br />
+                    Option 3: "RBI Rate Cut 2025: What It Actually Means for Your Money"<br /><br />
+                    Description: The RBI just made a decision that affects every Indian with a home loan, FD, or savings account. In this video, I break down exactly what the rate cut means...
+                  </div>
+                  <div className="output-tag-row">
+                    <span className="output-tag">3 title options</span>
+                    <span className="output-tag">200-word description</span>
+                    <span className="output-tag">12 SEO tags</span>
+                    <span className="output-tag">Primary keyword</span>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'social' && (
+                <div className="output-tab-content active">
+                  <div className="output-preview-title">Instagram + TikTok Captions</div>
+                  <div className="output-preview-block">
+                    📸 INSTAGRAM: The RBI just cut rates. Here's what nobody is telling you about your EMI, FD, and savings — and what you need to do before the 15th. 🧵 (Save this post before your bank changes the numbers)<br /><br />
+                    🎵 TIKTOK: Bhai, RBI ne rate cut kar diya. Kya tumhara EMI kam hoga? Yahan dekho #RBI #HomeLoan #PersonalFinance #EMI #InvestmentTips
+                  </div>
+                  <div className="output-tag-row">
+                    <span className="output-tag">Instagram caption</span>
+                    <span className="output-tag">20 hashtags</span>
+                    <span className="output-tag">TikTok caption</span>
+                    <span className="output-tag">Posting schedule</span>
+                  </div>
+                </div>
+              )}
+              {activeTab === 'plan' && (
+                <div className="output-tab-content active">
+                  <div className="output-preview-title">7-Day Content Sprint</div>
+                  <div className="output-preview-block">
+                    Mon — Main Video: "RBI Rate Cut — What It Means for Your EMI"<br />
+                    Tue — Short: "3 Things Your Bank Won't Tell You About Rate Cuts" (60s Reel)<br />
+                    Wed — Community Post: Poll "Has your bank notified you about the rate change?"<br />
+                    Thu — Short: "FD vs Home Loan — Who Benefits More?" (Reel repurpose)<br />
+                    Fri — Main Video: "Best Savings Account in India After RBI Cut 2025"...
+                  </div>
+                  <div className="output-tag-row">
+                    <span className="output-tag">7 days planned</span>
+                    <span className="output-tag">Multi-platform</span>
+                    <span className="output-tag">Repurpose map</span>
+                    <span className="output-tag">Optimal timing</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
