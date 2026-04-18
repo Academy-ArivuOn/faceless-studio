@@ -201,7 +201,7 @@ export function FinalCTA() {
             No card required. No setup. Just your niche — and a complete week of content, ready to publish.
           </p>
           <div className={`fcta-buttons ${visible ? 'visible' : ''}`}>
-            <a href="/generate" className="fcta-primary">
+            <a href="/login" className="fcta-primary">
               Generate Free Now →
             </a>
             <a href="#pricing" className="fcta-secondary">

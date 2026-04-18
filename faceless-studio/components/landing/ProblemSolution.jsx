@@ -264,7 +264,7 @@ export default function LiveComparison() {
           </div>
 
           <div className="comp-cta">
-            <a href="/generate" className="comp-badge">
+            <a href="/login" className="comp-badge">
               🚀 Generate Your First Complete Pack Free →
             </a>
           </div>

@@ -18,7 +18,7 @@ const dmSans = DM_Sans({
 
 
 export const metadata = {
-  metadataBase: new URL('https://facelessstudio.ai'),
+  metadataBase: new URL('https://studio-ai-hub.vercel.app'),
   title: {
     default: 'Faceless Studio — AI Content OS for YouTube Creators',
     template: '%s | Faceless Studio',
@@ -44,7 +44,7 @@ export const metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_IN',
-    url: 'https://facelessstudio.ai',
+    url: 'https://studio-ai-hub.vercel.app',
     siteName: 'Faceless Studio',
     title: 'Faceless Studio — AI Content OS for YouTube Creators',
     description:
@@ -78,7 +78,7 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://facelessstudio.ai',
+    canonical: 'https://studio-ai-hub.vercel.app',
   },
   verification: {
     google: 'YOUR_GOOGLE_VERIFICATION_CODE',
