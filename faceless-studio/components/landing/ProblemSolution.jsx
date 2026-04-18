@@ -1,32 +1,87 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 
-const PAIN_POINTS = [
-  { icon: '⏰', text: 'Spending 8+ hours writing a single script' },
-  { icon: '😵', text: 'Staring at a blank page with zero ideas' },
-  { icon: '📉', text: 'Publishing videos that get zero traction' },
-  { icon: '🔁', text: 'Rewriting the same hook 15 times' },
-  { icon: '🤯', text: 'Juggling research, scripting, and SEO at once' },
-  { icon: '💸', text: 'Paying ₹15k/month for a content team' },
+const COMPARISON_DATA = [
+  {
+    asset: 'Full script (945 words)',
+    chatgpt: '❌ Needs 5+ prompts',
+    claude: '❌ Needs 5+ prompts',
+    gemini: '❌ Needs 5+ prompts',
+    studio: '✅ One niche → ready script',
+  },
+  {
+    asset: 'Scene-by-scene breakdown (8 scenes)',
+    chatgpt: '❌ Only generic structure',
+    claude: '❌ Only generic structure',
+    gemini: '❌ Only generic structure',
+    studio: '✅ Camera + B-roll + retention tech',
+  },
+  {
+    asset: 'SEO titles (3 high-CTR options)',
+    chatgpt: '❌ Basic titles, no CTR analysis',
+    claude: '❌ Basic titles, no CTR analysis',
+    gemini: '❌ Basic titles, no CTR analysis',
+    studio: '✅ Ranked by click potential',
+  },
+  {
+    asset: '12 SEO tags + meta description',
+    chatgpt: '❌ Manual extraction',
+    claude: '❌ Manual extraction',
+    gemini: '❌ Manual extraction',
+    studio: '✅ Auto-generated, niche-relevant',
+  },
+  {
+    asset: 'Instagram caption + hashtags (28)',
+    chatgpt: '❌ Generic caption only',
+    claude: '❌ Generic caption only',
+    gemini: '❌ Generic caption only',
+    studio: '✅ Platform-optimised + save CTAs',
+  },
+  {
+    asset: 'TikTok / Reels 60s cut',
+    chatgpt: '❌ No short-form adaptation',
+    claude: '❌ No short-form adaptation',
+    gemini: '❌ No short-form adaptation',
+    studio: '✅ Ready-to-record script',
+  },
+  {
+    asset: 'YouTube Shorts script',
+    chatgpt: '❌ Not included',
+    claude: '❌ Not included',
+    gemini: '❌ Not included',
+    studio: '✅ Separate short version',
+  },
+  {
+    asset: '7-day content sprint plan',
+    chatgpt: '❌ You build the calendar',
+    claude: '❌ You build the calendar',
+    gemini: '❌ You build the calendar',
+    studio: '✅ Day-by-day posts + stories',
+  },
+  {
+    asset: 'Blog post (SEO optimised)',
+    chatgpt: '❌ Requires separate prompt',
+    claude: '❌ Requires separate prompt',
+    gemini: '❌ Requires separate prompt',
+    studio: '✅ Full article + meta data',
+  },
+  {
+    asset: 'Hidden charges & booking traps',
+    chatgpt: '❌ Generic travel tips',
+    claude: '❌ Generic travel tips',
+    gemini: '❌ Generic travel tips',
+    studio: '✅ Specific to your niche',
+  },
 ]
 
-const GAINS = [
-  { icon: '⚡', text: '90-second full content pack, ready to publish', color: '#059669' },
-  { icon: '🎯', text: 'AI finds viral angles in your niche automatically', color: '#2563EB' },
-  { icon: '🚀', text: 'SEO-optimised titles that actually get clicks', color: '#D4A847' },
-  { icon: '🎬', text: 'Scene-by-scene direction for faceless or on-camera', color: '#7C3AED' },
-  { icon: '📱', text: 'Instagram + TikTok captions generated instantly', color: '#DC2626' },
-  { icon: '📅', text: 'Complete 7-day content sprint plan included', color: '#059669' },
-]
-
-export default function ProblemSolution() {
+export default function LiveComparison() {
   const [visible, setVisible] = useState(false)
   const ref = useRef(null)
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true) },
-      { threshold: 0.15 }
+      { threshold: 0.1 }
     )
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
@@ -35,24 +90,24 @@ export default function ProblemSolution() {
   return (
     <>
       <style>{`
-        .ps-section {
-          padding: 120px 0;
-          background: #ffffff;
-          overflow: hidden;
+        .comp-section {
+          padding: 100px 0;
+          background: #F9FAFB;
+          overflow-x: auto;
         }
 
-        .ps-inner {
-          max-width: 1200px;
+        .comp-inner {
+          max-width: 1300px;
           margin: 0 auto;
           padding: 0 24px;
         }
 
-        .ps-header {
+        .comp-header {
           text-align: center;
-          margin-bottom: 80px;
+          margin-bottom: 60px;
         }
 
-        .ps-eyebrow {
+        .comp-eyebrow {
           font-family: 'JetBrains Mono', monospace;
           font-size: 11px;
           font-weight: 600;
@@ -63,325 +118,154 @@ export default function ProblemSolution() {
           display: block;
         }
 
-        .ps-title {
+        .comp-title {
           font-family: 'Bricolage Grotesque', sans-serif;
-          font-size: clamp(36px, 5vw, 60px);
+          font-size: clamp(32px, 5vw, 52px);
           font-weight: 800;
           color: #0A0A0A;
-          letter-spacing: -0.04em;
-          line-height: 1.08;
+          letter-spacing: -0.03em;
+          line-height: 1.1;
           margin-bottom: 20px;
         }
 
-        .ps-sub {
+        .comp-sub {
           font-family: 'DM Sans', sans-serif;
           font-size: 18px;
-          color: #374151;
-          max-width: 560px;
+          color: #4B5563;
+          max-width: 600px;
           margin: 0 auto;
-          line-height: 1.7;
         }
 
-        /* Two column layout */
-        .ps-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 32px;
+        .comparison-table-wrapper {
+          background: #ffffff;
+          border-radius: 28px;
+          box-shadow: 0 12px 40px rgba(0,0,0,0.05);
+          overflow-x: auto;
+          border: 1px solid #E5E7EB;
         }
 
-        /* Before column */
-        .ps-before {
-          background: #FEF2F2;
-          border: 1.5px solid #FCA5A5;
-          border-radius: 20px;
-          padding: 36px;
-          opacity: 0;
-          transform: translateX(-30px);
-          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        .comparison-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-family: 'DM Sans', sans-serif;
+          min-width: 800px;
         }
 
-        .ps-before.visible {
-          opacity: 1;
-          transform: translateX(0);
+        .comparison-table th,
+        .comparison-table td {
+          padding: 18px 16px;
+          text-align: left;
+          border-bottom: 1px solid #F0F2F5;
+          vertical-align: top;
         }
 
-        .col-label {
+        .comparison-table th {
+          font-family: 'Bricolage Grotesque', sans-serif;
+          font-weight: 700;
+          font-size: 16px;
+          background: #FAFBFC;
+          color: #1F2937;
+          border-bottom: 2px solid #E5E7EB;
+        }
+
+        .comparison-table td:first-child,
+        .comparison-table th:first-child {
+          padding-left: 24px;
+        }
+
+        .comparison-table td:last-child,
+        .comparison-table th:last-child {
+          padding-right: 24px;
+        }
+
+        .asset-cell {
+          font-weight: 600;
+          color: #0A0A0A;
+          font-size: 14px;
+        }
+
+        .studio-cell {
+          background: rgba(5, 150, 105, 0.03);
+          font-weight: 500;
+          color: #059669;
+        }
+
+        .generic-cell {
+          color: #6B7280;
+          font-size: 13px;
+        }
+
+        .comp-cta {
+          margin-top: 50px;
+          text-align: center;
+        }
+
+        .comp-badge {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
-          padding: 5px 14px;
-          border-radius: 100px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.07em;
-          text-transform: uppercase;
-          margin-bottom: 28px;
-        }
-
-        .label-before {
-          background: #FEE2E2;
-          color: #DC2626;
-          border: 1px solid #FCA5A5;
-        }
-
-        .label-after {
-          background: #D1FAE5;
-          color: #059669;
-          border: 1px solid #6EE7B7;
-        }
-
-        .col-heading {
-          font-family: 'Bricolage Grotesque', sans-serif;
-          font-size: 22px;
-          font-weight: 700;
-          color: #0A0A0A;
-          margin-bottom: 24px;
-          letter-spacing: -0.02em;
-        }
-
-        .pain-list {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-
-        .pain-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          padding: 14px 16px;
-          background: #ffffff;
-          border: 1px solid #FCA5A5;
-          border-radius: 10px;
-          opacity: 0;
-          transform: translateX(-16px);
-          transition: all 0.5s ease;
-        }
-
-        .pain-item.visible {
-          opacity: 1;
-          transform: translateX(0);
-        }
-
-        .pain-icon {
-          font-size: 18px;
-          flex-shrink: 0;
-          margin-top: 1px;
-        }
-
-        .pain-text {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px;
-          color: #374151;
-          line-height: 1.5;
-          font-weight: 500;
-        }
-
-        /* After column */
-        .ps-after {
+          gap: 8px;
           background: #0A0A0A;
-          border: 1.5px solid #1F2937;
-          border-radius: 20px;
-          padding: 36px;
-          opacity: 0;
-          transform: translateX(30px);
-          transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .ps-after.visible {
-          opacity: 1;
-          transform: translateX(0);
-        }
-
-        .ps-after::before {
-          content: '';
-          position: absolute;
-          top: -60px;
-          right: -60px;
-          width: 200px;
-          height: 200px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(212,168,71,0.15) 0%, transparent 70%);
-          pointer-events: none;
-        }
-
-        .gain-list {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-
-        .gain-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          padding: 14px 16px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 10px;
-          opacity: 0;
-          transform: translateX(16px);
-          transition: all 0.5s ease;
-          position: relative;
-        }
-
-        .gain-item.visible {
-          opacity: 1;
-          transform: translateX(0);
-        }
-
-        .gain-item::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 3px;
-          border-radius: 3px 0 0 3px;
-          background: var(--gain-color);
-          opacity: 0;
-          transition: opacity 0.4s ease;
-        }
-
-        .gain-item.visible::before { opacity: 1; }
-
-        .gain-icon {
-          font-size: 18px;
-          flex-shrink: 0;
-          margin-top: 1px;
-        }
-
-        .gain-text {
-          font-family: 'DM Sans', sans-serif;
-          font-size: 14px;
-          color: rgba(255,255,255,0.85);
-          line-height: 1.5;
-          font-weight: 500;
-        }
-
-        /* CTA banner at bottom */
-        .ps-cta-banner {
-          margin-top: 60px;
-          text-align: center;
-          opacity: 0;
-          transform: translateY(20px);
-          transition: all 0.7s ease 0.5s;
-        }
-
-        .ps-cta-banner.visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
-
-        .ps-switch-text {
+          color: white;
+          padding: 12px 28px;
+          border-radius: 40px;
           font-family: 'Bricolage Grotesque', sans-serif;
-          font-size: clamp(22px, 3.5vw, 34px);
           font-weight: 700;
-          color: #0A0A0A;
-          letter-spacing: -0.03em;
-          margin-bottom: 28px;
-          line-height: 1.25;
+          font-size: 15px;
+          text-decoration: none;
+          transition: all 0.2s ease;
         }
 
-        .ps-switch-text .highlight {
-          color: #D4A847;
-          position: relative;
+        .comp-badge:hover {
+          transform: translateY(-2px);
+          background: #1F2937;
         }
 
-        @media (max-width: 768px) {
-          .ps-grid { grid-template-columns: 1fr; gap: 20px; }
-          .ps-section { padding: 80px 0; }
+        @media (max-width: 640px) {
+          .comp-section { padding: 60px 0; }
+          .comparison-table th, .comparison-table td { padding: 12px 12px; }
         }
       `}</style>
 
-      <section className="ps-section" id="problem" ref={ref}>
-        <div className="ps-inner">
-          <div className="ps-header">
-            <span className="ps-eyebrow">The Real Problem</span>
-            <h2 className="ps-title">
-              You know your niche.<br />
-              You just don't have time to<br />
-              <em style={{ fontStyle: 'normal', color: '#DC2626' }}>create everything from scratch.</em>
+      <section className="comp-section" ref={ref}>
+        <div className="comp-inner">
+          <div className="comp-header">
+            <span className="comp-eyebrow">Live Feature Comparison</span>
+            <h2 className="comp-title">
+              ChatGPT · Claude · Gemini vs <span style={{ color: '#059669' }}>Studio AI</span>
             </h2>
-            <p className="ps-sub">
-              Every creator faces the same bottleneck. Studio AI eliminates it entirely.
+            <p className="comp-sub">
+              See what you get when you stop prompting and start using a real content engine.
             </p>
           </div>
 
-          <div className="ps-grid">
-            {/* Before */}
-            <div className={`ps-before ${visible ? 'visible' : ''}`}>
-              <div className="col-label label-before">
-                ✕ Without Studio AI
-              </div>
-              <h3 className="col-heading">Hours of painful, repetitive work</h3>
-              <div className="pain-list">
-                {PAIN_POINTS.map((p, i) => (
-                  <div
-                    key={i}
-                    className={`pain-item ${visible ? 'visible' : ''}`}
-                    style={{ transitionDelay: `${0.1 + i * 0.08}s` }}
-                  >
-                    <span className="pain-icon">{p.icon}</span>
-                    <span className="pain-text">{p.text}</span>
-                  </div>
+          <div className="comparison-table-wrapper">
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th>Content Asset</th>
+                  <th>ChatGPT</th>
+                  <th>Claude</th>
+                  <th>Gemini</th>
+                  <th style={{ color: '#059669' }}>Studio AI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARISON_DATA.map((row, idx) => (
+                  <tr key={idx} style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'translateY(8px)', transition: `all 0.3s ease ${idx * 0.02}s` }}>
+                    <td className="asset-cell">{row.asset}</td>
+                    <td className="generic-cell">{row.chatgpt}</td>
+                    <td className="generic-cell">{row.claude}</td>
+                    <td className="generic-cell">{row.gemini}</td>
+                    <td className="studio-cell">{row.studio}</td>
+                  </tr>
                 ))}
-              </div>
-            </div>
-
-            {/* After */}
-            <div className={`ps-after ${visible ? 'visible' : ''}`}>
-              <div className="col-label label-after">
-                ✓ With Studio AI
-              </div>
-              <h3 className="col-heading" style={{ color: '#ffffff' }}>One input. Complete content pack.</h3>
-              <div className="gain-list">
-                {GAINS.map((g, i) => (
-                  <div
-                    key={i}
-                    className={`gain-item ${visible ? 'visible' : ''}`}
-                    style={{
-                      '--gain-color': g.color,
-                      transitionDelay: `${0.2 + i * 0.08}s`
-                    }}
-                  >
-                    <span className="gain-icon">{g.icon}</span>
-                    <span className="gain-text">{g.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
 
-          <div className={`ps-cta-banner ${visible ? 'visible' : ''}`}>
-            <p className="ps-switch-text">
-              Stop creating content the <span className="highlight">slow way.</span><br />
-              Your first pack is free.
-            </p>
-            <a
-              href="/generate"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 10,
-                background: '#0A0A0A',
-                color: '#ffffff',
-                padding: '16px 36px',
-                borderRadius: 12,
-                fontFamily: "'Bricolage Grotesque', sans-serif",
-                fontSize: 17,
-                fontWeight: 700,
-                textDecoration: 'none',
-                letterSpacing: '-0.01em',
-                transition: 'all 0.25s ease',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.2)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              Try It Now — Free →
+          <div className="comp-cta">
+            <a href="/generate" className="comp-badge">
+              🚀 Generate Your First Complete Pack Free →
             </a>
           </div>
         </div>
