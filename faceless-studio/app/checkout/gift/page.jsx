@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/packages/supabase-browser';
 
-export const dynamic = 'force-dynamic';
-
 function loadRazorpay() {
   return new Promise((resolve) => {
     if (window.Razorpay) { resolve(true); return; }

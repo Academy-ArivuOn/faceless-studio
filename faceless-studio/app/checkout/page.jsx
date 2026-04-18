@@ -1,9 +1,11 @@
+// app/checkout/page.jsx
 'use client';
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowser } from '@/packages/supabase-browser';
-
-export const dynamic = 'force-dynamic';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const CURRENCIES = [
@@ -82,15 +84,16 @@ function Check({ color = '#C9A227' }) {
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
-export default function CheckoutPage() {
+// ── Inner component that uses useSearchParams ────────────────────────────────
+function CheckoutContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const supabase     = getSupabaseBrowser();
 
-  const [selectedPlan, setSelectedPlan] = useState('pro');
+  const defaultPlan = searchParams.get('plan') || 'pro';
   const [user,          setUser]          = useState(null);
   const [loading,       setLoading]       = useState(true);
+  const [selectedPlan,  setSelectedPlan]  = useState(defaultPlan);
   const [billingCycle,  setBillingCycle]  = useState('monthly');
   const [currency,      setCurrency]      = useState('INR');
   const [processing,    setProcessing]    = useState(false);
@@ -106,11 +109,6 @@ export default function CheckoutPage() {
       setLoading(false);
     });
   }, []);
-
-  useEffect(() => {
-    const plan = searchParams.get('plan');
-    if (plan) setSelectedPlan(plan);
-  }, [searchParams]);
 
   const plan     = PLANS[selectedPlan];
   const price    = plan?.prices?.[billingCycle]?.[currency] || 0;
@@ -616,5 +614,19 @@ export default function CheckoutPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// ── Main export with Suspense boundary ───────────────────────────────────────
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: '#07070E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(212,168,71,0.3)', borderTopColor: '#D4A847', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }
