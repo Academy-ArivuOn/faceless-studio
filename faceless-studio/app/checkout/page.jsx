@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowser } from '@/packages/supabase-browser';
 
+export const dynamic = 'force-dynamic';
+
 // ── Constants ────────────────────────────────────────────────────────────────
 const CURRENCIES = [
   { code: 'INR', symbol: '₹', label: 'Indian Rupee', flag: '🇮🇳' },
@@ -86,10 +88,9 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const supabase     = getSupabaseBrowser();
 
-  const defaultPlan = searchParams.get('plan') || 'pro';
+  const [selectedPlan, setSelectedPlan] = useState('pro');
   const [user,          setUser]          = useState(null);
   const [loading,       setLoading]       = useState(true);
-  const [selectedPlan,  setSelectedPlan]  = useState(defaultPlan);
   const [billingCycle,  setBillingCycle]  = useState('monthly');
   const [currency,      setCurrency]      = useState('INR');
   const [processing,    setProcessing]    = useState(false);
@@ -105,6 +106,11 @@ export default function CheckoutPage() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    const plan = searchParams.get('plan');
+    if (plan) setSelectedPlan(plan);
+  }, [searchParams]);
 
   const plan     = PLANS[selectedPlan];
   const price    = plan?.prices?.[billingCycle]?.[currency] || 0;
