@@ -38,6 +38,139 @@ function Label({ children, color = '#8C8C8C' }) {
   return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color, fontFamily: "'JetBrains Mono',monospace" }}>{children}</span>;
 }
 
+// ── Export Modal ──────────────────────────────────────────────────────────────
+function ExportModal({ result, session, onClose }) {
+  const [exporting, setExporting] = useState(null); // 'pdf' | 'docx' | null
+  const [error, setError] = useState('');
+
+  async function handleExport(format) {
+    if (!session) { setError('Login required to export'); return; }
+    setExporting(format); setError('');
+    try {
+      const res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ format, result }),
+      });
+      if (!res.ok) { const j = await res.json(); throw new Error(j.error || 'Export failed'); }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const topic = (result?.research?.chosen_topic || 'studio-ai-content').slice(0, 40).replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      a.href = url;
+      a.download = `${topic}.${format === 'docx' ? 'docx' : 'pdf'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Export failed. Please try again.');
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  const { research = {}, creator = {}, publisher = {} } = result || {};
+  const yt = publisher.youtube || {};
+  const sections = [
+    { icon: '🔍', label: 'Research & Strategy', desc: 'Topic, hook, angles, psychology' },
+    { icon: '📄', label: 'Full Script', desc: `${creator.word_count || 0} words · ${creator.scenes?.length || 0} scenes` },
+    { icon: '🎬', label: 'Scene Breakdown', desc: `${creator.scenes?.length || 0} scenes with B-roll & direction` },
+    { icon: '▶️', label: 'YouTube SEO', desc: `${yt.title_options?.length || 0} titles · description · ${yt.tags?.length || 0} tags` },
+    { icon: '📱', label: 'Social Media', desc: 'Instagram, TikTok captions + hashtags' },
+    { icon: '📅', label: '7-Day Content Plan', desc: `${publisher.seven_day_content_plan?.length || 0} days of scheduled content` },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ background: '#FFFFFF', borderRadius: 16, width: '100%', maxWidth: 480, boxShadow: '0 24px 80px rgba(0,0,0,0.18)', overflow: 'hidden', animation: 'fadeUp 0.2s ease both' }}>
+
+        {/* Header */}
+        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #E8E8E8', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: 16, fontWeight: 700, color: '#0A0A0A', marginBottom: 4, fontFamily: "'DM Sans',sans-serif" }}>Export Content Pack</p>
+            <p style={{ fontSize: 12, color: '#8C8C8C', fontFamily: "'DM Sans',sans-serif" }}>Download everything as a single document</p>
+          </div>
+          <button onClick={onClose} style={{ background: '#F5F5F5', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', fontSize: 14, color: '#5C5C5C', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+        </div>
+
+        {/* Included sections */}
+        <div style={{ padding: '16px 24px' }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#8C8C8C', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, fontFamily: "'JetBrains Mono',monospace" }}>What's included</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {sections.map(s => (
+              <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: '#F8F8F8', borderRadius: 8 }}>
+                <span style={{ fontSize: 14, flexShrink: 0 }}>{s.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#0A0A0A', margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{s.label}</p>
+                  <p style={{ fontSize: 11, color: '#8C8C8C', margin: 0, fontFamily: "'DM Sans',sans-serif" }}>{s.desc}</p>
+                </div>
+                <span style={{ fontSize: 11, color: '#0E7C4A', fontFamily: "'JetBrains Mono',monospace" }}>✓</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div style={{ margin: '0 24px', padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, fontSize: 12, color: '#DC2626', fontFamily: "'DM Sans',sans-serif" }}>
+            ⚠ {error}
+          </div>
+        )}
+
+        {/* Format buttons */}
+        <div style={{ padding: '16px 24px 24px', display: 'flex', gap: 10 }}>
+          {/* PDF */}
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={!!exporting}
+            style={{ flex: 1, padding: '14px 16px', border: '1.5px solid #E8E8E8', borderRadius: 12, background: '#FFFFFF', cursor: exporting ? 'not-allowed' : 'pointer', transition: 'all 0.18s', opacity: exporting && exporting !== 'pdf' ? 0.5 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+            onMouseEnter={e => { if (!exporting) { e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.background = '#FEF2F2'; } }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E8E8'; e.currentTarget.style.background = '#FFFFFF'; }}
+          >
+            {exporting === 'pdf'
+              ? <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid #E8E8E8', borderTopColor: '#DC2626', animation: 'spin 0.7s linear infinite' }} />
+              : <span style={{ fontSize: 24 }}>📄</span>
+            }
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#0A0A0A', margin: 0, fontFamily: "'DM Sans',sans-serif" }}>
+                {exporting === 'pdf' ? 'Generating…' : 'Download PDF'}
+              </p>
+              <p style={{ fontSize: 11, color: '#8C8C8C', margin: '2px 0 0', fontFamily: "'DM Sans',sans-serif" }}>Formatted, print-ready</p>
+            </div>
+          </button>
+
+          {/* DOCX */}
+          <button
+            onClick={() => handleExport('docx')}
+            disabled={!!exporting}
+            style={{ flex: 1, padding: '14px 16px', border: '1.5px solid #E8E8E8', borderRadius: 12, background: '#FFFFFF', cursor: exporting ? 'not-allowed' : 'pointer', transition: 'all 0.18s', opacity: exporting && exporting !== 'docx' ? 0.5 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+            onMouseEnter={e => { if (!exporting) { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.background = '#EFF6FF'; } }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8E8E8'; e.currentTarget.style.background = '#FFFFFF'; }}
+          >
+            {exporting === 'docx'
+              ? <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid #E8E8E8', borderTopColor: '#2563EB', animation: 'spin 0.7s linear infinite' }} />
+              : <span style={{ fontSize: 24 }}>📝</span>
+            }
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#0A0A0A', margin: 0, fontFamily: "'DM Sans',sans-serif" }}>
+                {exporting === 'docx' ? 'Generating…' : 'Download Word'}
+              </p>
+              <p style={{ fontSize: 11, color: '#8C8C8C', margin: '2px 0 0', fontFamily: "'DM Sans',sans-serif" }}>Editable .docx file</p>
+            </div>
+          </button>
+        </div>
+
+        <div style={{ padding: '0 24px 18px', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, color: '#BCBCBC', fontFamily: "'DM Sans',sans-serif" }}>All 6 sections included · Generated server-side · No data stored</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Prose({ children, style = {} }) {
   return (
     <div style={{ background: '#F8F8F8', border: '1px solid #E8E8E8', borderRadius: 10, padding: '16px 18px', fontSize: 14, color: '#1A1A1A', lineHeight: 1.8, fontFamily: "'DM Sans',sans-serif", whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...style }}>
@@ -496,6 +629,8 @@ export default function ResultsPage() {
   const [isRegenerating, setIsRegenerating] = useState(null);
   const [regenStatus, setRegenStatus] = useState('');
   const [notification, setNotification] = useState(null);
+  const [showExport, setShowExport] = useState(false);
+  const [session, setSession] = useState(null);
   const sessionRef = useRef(null);
 
   useEffect(() => {
@@ -507,8 +642,9 @@ export default function ResultsPage() {
 
   // Load supabase session for auth header
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      sessionRef.current = session;
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      sessionRef.current = s;
+      setSession(s);
     });
   }, []);
 
@@ -742,10 +878,16 @@ export default function ResultsPage() {
             <button className={`rp-btn edit-toggle ${editMode ? 'on' : 'off'}`} onClick={() => { setEditMode(!editMode); if (editMode) setActiveSection(null); }}>
               {editMode ? '✓ Edit mode on' : '✏ Edit mode'}
             </button>
+            <button className="rp-btn ghost" onClick={() => setShowExport(true)} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>⬇ Export</button>
             <button className="rp-btn ghost" onClick={() => router.push('/dashboard')}>History</button>
             <button className="rp-btn primary" onClick={() => router.push('/generate')}>+ New</button>
           </div>
         </header>
+
+        {/* Export Modal */}
+        {showExport && (
+          <ExportModal result={result} session={session} onClose={() => setShowExport(false)} />
+        )}
 
         {/* Edit mode banner */}
         {editMode && (
