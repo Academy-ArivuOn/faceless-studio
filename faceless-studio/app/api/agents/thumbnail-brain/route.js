@@ -1,10 +1,16 @@
+// app/api/agents/thumbnail-brain/route.js
 export const runtime     = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 40;
 
-import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
+import { guardAgentWithContext }    from '@/app/api/agents/plan-guard-with-chain';
 import { buildThumbnailBrainPrompt } from '@/packages/agents/pro-prompts';
 import { callGeminiWithRetry }       from '@/packages/gemini';
 import { sanitise }                  from '@/packages/agents/validator';
+import {
+  fetchTrendingVideos,
+  fetchYouTubeVideoData,
+  buildRealDataBlock,
+} from '@/packages/web-intelligence';
 
 export async function POST(request) {
   const startMs = Date.now();
@@ -30,6 +36,40 @@ export async function POST(request) {
     if (!platform)
       return Response.json({ error: 'platform is required' }, { status: 400 });
 
+    // ── Fetch real thumbnail/video performance data ─────────────────────────
+    console.log(`[thumbnail-brain] Fetching real video data for: ${topic}`);
+    const [topicVideos, nicheVideos] = await Promise.all([
+      fetchYouTubeVideoData(topic).catch(() => null),
+      fetchTrendingVideos(niche, platform).catch(() => []),
+    ]);
+
+    let realDataBlock = '';
+
+    if (topicVideos?.length > 0) {
+      // Extract thumbnail URL and performance to identify patterns
+      realDataBlock += buildRealDataBlock(
+        'Top Performing Videos on This Exact Topic',
+        topicVideos.slice(0, 6).map((v, i) =>
+          `${i + 1}. "${v.title}"
+   Views: ${v.views.toLocaleString('en-IN')} | Engagement Rate: ${v.views > 0 ? ((v.likes / v.views) * 100).toFixed(2) : 0}%
+   Channel: ${v.channelName}
+   Published: ${v.publishedAt?.slice(0, 10) || 'N/A'}`
+        ).join('\n\n')
+      );
+    }
+
+    if (nicheVideos?.length > 0) {
+      // Find the top 5 view counts to understand what thumbnail quality to beat
+      const topPerformers = nicheVideos.slice(0, 5);
+      realDataBlock += '\n\n' + buildRealDataBlock(
+        'Top Performing Thumbnails in This Niche (what you are competing against)',
+        topPerformers.map((v, i) =>
+          `${i + 1}. "${v.title}" — ${v.views.toLocaleString('en-IN')} views
+   Channel: ${v.channel}`
+        ).join('\n')
+      );
+    }
+
     const cleanInput = {
       topic:      topic.trim().slice(0, 300),
       niche:      niche.trim().slice(0, 150),
@@ -40,11 +80,14 @@ export async function POST(request) {
       _chainBlock: guard.chainBlock || '',
     };
 
-    const prompt = buildThumbnailBrainPrompt(cleanInput);
+    const basePrompt = buildThumbnailBrainPrompt(cleanInput);
+    const prompt = realDataBlock
+      ? `${realDataBlock}\n\nUSE THE REAL COMPETITOR DATA above. Your competitor_gap field must describe what the ACTUAL top-performing thumbnails in this niche look like based on the real video data — and how yours should visually differ. Base your contrast analysis on these real performers, not assumptions.\n\n${basePrompt}`
+      : basePrompt;
 
     let result;
     try {
-      result = await callGeminiWithRetry({ prompt, agentType: 'publisher', maxTokens: 2500 });
+      result = await callGeminiWithRetry({ prompt, agentType: 'publisher', maxTokens: 3000 });
     } catch (err) {
       console.error('[thumbnail-brain] Gemini error:', err.message);
       return Response.json(
@@ -60,16 +103,27 @@ export async function POST(request) {
       console.warn('[thumbnail-brain] Primary concept incomplete');
     }
 
+    // Attach real competitor info for frontend
+    if (topicVideos?.length > 0) {
+      data._real_competitors = topicVideos.slice(0, 5).map(v => ({
+        title:   v.title,
+        views:   v.views,
+        channel: v.channelName,
+      }));
+    }
+
     return Response.json({
       success: true,
       data,
       meta: {
-        agent:       'thumbnail-brain',
-        duration_ms: Date.now() - startMs,
-        has_variant: !!data.variant_b,
-        has_ai_prompt: !!data.primary_concept?.ai_image_prompt,
-        dna_injected: !!guard.dnaBlock,
-        session_id:  guard.sessionId,
+        agent:           'thumbnail-brain',
+        duration_ms:     Date.now() - startMs,
+        has_variant:     !!data.variant_b,
+        has_ai_prompt:   !!data.primary_concept?.ai_image_prompt,
+        real_data_used:  !!(topicVideos?.length),
+        competitors_analysed: topicVideos?.length || 0,
+        dna_injected:    !!guard.dnaBlock,
+        session_id:      guard.sessionId,
       },
     });
 

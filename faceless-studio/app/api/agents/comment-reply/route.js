@@ -1,10 +1,19 @@
+// app/api/agents/comment-reply/route.js
+// Comment reply uses live comment data — no external fetch needed
+// (comments come from the creator themselves)
+// Enhancement: fetch niche engagement patterns to improve reply quality
+
 export const runtime     = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 40;
 
 import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
-import { buildCommentReplyPrompt }   from '@/packages/agents/pro-prompts';
-import { callGeminiWithRetry }       from '@/packages/gemini';
-import { sanitise }                  from '@/packages/agents/validator';
+import { buildCommentReplyPrompt } from '@/packages/agents/pro-prompts';
+import { callGeminiWithRetry }     from '@/packages/gemini';
+import { sanitise }                from '@/packages/agents/validator';
+import {
+  fetchTrendingVideos,
+  buildRealDataBlock,
+} from '@/packages/web-intelligence';
 
 export async function POST(request) {
   const startMs = Date.now();
@@ -30,13 +39,26 @@ export async function POST(request) {
     if (!platform)
       return Response.json({ error: 'platform is required' }, { status: 400 });
 
-    // Normalise comments — accept array or newline-separated string
+    // Normalise comments
     const commentsArray = Array.isArray(comments)
       ? comments.map(c => String(c).trim()).filter(Boolean).slice(0, 20)
       : String(comments).split('\n').map(c => c.trim()).filter(Boolean).slice(0, 20);
 
     if (commentsArray.length === 0)
       return Response.json({ error: 'At least one non-empty comment is required' }, { status: 400 });
+
+    // ── Fetch niche top videos to understand what high-engagement channels sound like
+    const trendingVideos = await fetchTrendingVideos(niche, platform).catch(() => []);
+
+    let realDataBlock = '';
+    if (trendingVideos?.length > 0) {
+      const topChannels = [...new Set(trendingVideos.slice(0, 5).map(v => v.channel))];
+      realDataBlock = buildRealDataBlock(
+        'Top Channels in This Niche (Match Their Voice)',
+        `High-performing channels in ${niche}: ${topChannels.join(', ')}
+These channels dominate engagement — match their level of authenticity and audience rapport.`
+      );
+    }
 
     const cleanInput = {
       comments:    commentsArray,
@@ -48,7 +70,10 @@ export async function POST(request) {
       _chainBlock: guard.chainBlock || '',
     };
 
-    const prompt = buildCommentReplyPrompt(cleanInput);
+    const basePrompt = buildCommentReplyPrompt(cleanInput);
+    const prompt = realDataBlock
+      ? `${realDataBlock}\n\nThe replies must sound like a real ${niche} creator who deeply understands their audience — natural, specific to this niche, not generic.\n\n${basePrompt}`
+      : basePrompt;
 
     let result;
     try {
@@ -72,13 +97,13 @@ export async function POST(request) {
       success: true,
       data,
       meta: {
-        agent:         'comment-reply',
-        duration_ms:   Date.now() - startMs,
-        comments_in:   commentsArray.length,
-        replies_out:   data.replies?.length || 0,
+        agent:              'comment-reply',
+        duration_ms:        Date.now() - startMs,
+        comments_in:        commentsArray.length,
+        replies_out:        data.replies?.length || 0,
         pin_recommendation: data.pin_recommendation?.comment_number || null,
-        dna_injected: !!guard.dnaBlock,
-        session_id:  guard.sessionId,
+        dna_injected:       !!guard.dnaBlock,
+        session_id:         guard.sessionId,
       },
     });
 

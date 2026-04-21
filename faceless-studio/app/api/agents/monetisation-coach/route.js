@@ -1,10 +1,17 @@
+// app/api/agents/monetisation-coach/route.js
 export const runtime     = 'nodejs';
-export const maxDuration = 40;
+export const maxDuration = 50;
 
-import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
-import { buildMonetisationCoachPrompt }   from '@/packages/agents/pro-prompts';
-import { callGeminiWithRetry }            from '@/packages/gemini';
-import { sanitise }                       from '@/packages/agents/validator';
+import { guardAgentWithContext }        from '@/app/api/agents/plan-guard-with-chain';
+import { buildMonetisationCoachPrompt } from '@/packages/agents/pro-prompts';
+import { callGeminiWithRetry }          from '@/packages/gemini';
+import { sanitise }                     from '@/packages/agents/validator';
+import {
+  fetchCPMData,
+  fetchAffiliateData,
+  fetchSponsorshipData,
+  buildRealDataBlock,
+} from '@/packages/web-intelligence';
 
 export async function POST(request) {
   const startMs = Date.now();
@@ -29,6 +36,37 @@ export async function POST(request) {
     if (!platform)
       return Response.json({ error: 'platform is required' }, { status: 400 });
 
+    // ── Fetch real monetisation data ───────────────────────────────────────────
+    console.log(`[monetisation-coach] Fetching real data for niche: ${niche}`);
+    const [cpmData, affiliateData, sponsorData] = await Promise.all([
+      fetchCPMData(niche).catch(() => null),
+      fetchAffiliateData(niche, location).catch(() => []),
+      fetchSponsorshipData(niche).catch(() => []),
+    ]);
+
+    let realDataBlock = '';
+
+    if (cpmData?.length > 0) {
+      realDataBlock += buildRealDataBlock(
+        'Real CPM/RPM Data Found Online',
+        cpmData.map(c => `• ${c.title}\n  ${c.snippet}`).join('\n\n')
+      );
+    }
+
+    if (affiliateData?.length > 0) {
+      realDataBlock += '\n\n' + buildRealDataBlock(
+        'Affiliate Programs Found for This Niche',
+        affiliateData.map(a => `• ${a.title}\n  ${a.snippet}\n  Source: ${a.link || 'N/A'}`).join('\n\n')
+      );
+    }
+
+    if (sponsorData?.length > 0) {
+      realDataBlock += '\n\n' + buildRealDataBlock(
+        'Real Sponsorship / Brand Deal Information',
+        sponsorData.map(s => `• ${s.title}\n  ${s.snippet}`).join('\n\n')
+      );
+    }
+
     const cleanInput = {
       niche:           niche.trim().slice(0, 150),
       platform:        platform.trim().slice(0, 80),
@@ -39,11 +77,14 @@ export async function POST(request) {
       _chainBlock: guard.chainBlock || '',
     };
 
-    const prompt = buildMonetisationCoachPrompt(cleanInput);
+    const basePrompt = buildMonetisationCoachPrompt(cleanInput);
+    const prompt = realDataBlock
+      ? `${realDataBlock}\n\nUSE THE REAL DATA ABOVE for accurate CPM ranges, affiliate program names, commission rates, and sponsor categories. Base your analysis on these actual market findings, not generic assumptions.\n\n${basePrompt}`
+      : basePrompt;
 
     let result;
     try {
-      result = await callGeminiWithRetry({ prompt, agentType: 'publisher', maxTokens: 3500 });
+      result = await callGeminiWithRetry({ prompt, agentType: 'publisher', maxTokens: 4000 });
     } catch (err) {
       console.error('[monetisation-coach] Gemini error:', err.message);
       return Response.json(
@@ -54,12 +95,6 @@ export async function POST(request) {
     }
 
     const data = sanitise(result.data);
-
-    // Strip any accidental real API keys or financial account details from output
-    const sensitivePattern = /[A-Za-z0-9]{20,}/g;
-    if (data?.sponsor_pitch_email?.body) {
-      // Only strip if it looks like a real token — preserve normal text
-    }
 
     if (!data.affiliate_matches || data.affiliate_matches.length < 3) {
       console.warn('[monetisation-coach] Fewer than 3 affiliate matches returned');
@@ -74,8 +109,9 @@ export async function POST(request) {
         affiliate_count:   data.affiliate_matches?.length || 0,
         has_pitch_email:   !!data.sponsor_pitch_email?.body,
         projection_stages: data.revenue_projections?.length || 0,
-        dna_injected: !!guard.dnaBlock,
-        session_id:  guard.sessionId,
+        real_data_used:    !!(cpmData || affiliateData?.length),
+        dna_injected:      !!guard.dnaBlock,
+        session_id:        guard.sessionId,
       },
     });
 

@@ -1,10 +1,16 @@
+// app/api/agents/title-battle/route.js
 export const runtime     = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 40;
 
-import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
-import { buildTitleBattlePrompt }  from '@/packages/agents/pro-prompts';
-import { callGeminiWithRetry }     from '@/packages/gemini';
-import { sanitise }                from '@/packages/agents/validator';
+import { guardAgentWithContext }  from '@/app/api/agents/plan-guard-with-chain';
+import { buildTitleBattlePrompt } from '@/packages/agents/pro-prompts';
+import { callGeminiWithRetry }    from '@/packages/gemini';
+import { sanitise }               from '@/packages/agents/validator';
+import {
+  fetchYouTubeVideoData,
+  fetchTrendingVideos,
+  buildRealDataBlock,
+} from '@/packages/web-intelligence';
 
 export async function POST(request) {
   const startMs = Date.now();
@@ -30,6 +36,36 @@ export async function POST(request) {
     if (!platform)
       return Response.json({ error: 'platform is required' }, { status: 400 });
 
+    // ── Fetch real title performance data ──────────────────────────────────────
+    console.log(`[title-battle] Fetching real title performance data for: ${topic}`);
+    const [similarVideos, trendingVideos] = await Promise.all([
+      fetchYouTubeVideoData(topic).catch(() => null),
+      fetchTrendingVideos(niche, platform).catch(() => []),
+    ]);
+
+    let realDataBlock = '';
+
+    if (similarVideos?.length > 0) {
+      realDataBlock += buildRealDataBlock(
+        'Real Videos on This Topic — Performance Data',
+        similarVideos.slice(0, 8).map((v, i) =>
+          `${i + 1}. "${v.title}"
+   Channel: ${v.channelName}
+   Views: ${v.views.toLocaleString('en-IN')} | Likes: ${v.likes.toLocaleString('en-IN')} | Comments: ${v.comments.toLocaleString('en-IN')}
+   Tags: ${(v.tags || []).slice(0, 5).join(', ') || 'none'}`
+        ).join('\n\n')
+      );
+    }
+
+    if (trendingVideos?.length > 0) {
+      // Extract just titles for pattern analysis
+      const titles = trendingVideos.slice(0, 12).map(v => `"${v.title}" — ${v.views.toLocaleString('en-IN')} views`);
+      realDataBlock += '\n\n' + buildRealDataBlock(
+        'Top Performing Titles in This Niche Right Now',
+        titles.join('\n')
+      );
+    }
+
     const cleanInput = {
       topic:        topic.trim().slice(0, 300),
       niche:        niche.trim().slice(0, 150),
@@ -40,11 +76,14 @@ export async function POST(request) {
       _chainBlock: guard.chainBlock || '',
     };
 
-    const prompt = buildTitleBattlePrompt(cleanInput);
+    const basePrompt = buildTitleBattlePrompt(cleanInput);
+    const prompt = realDataBlock
+      ? `${realDataBlock}\n\nUSE THE REAL TITLE DATA ABOVE. Study the actual titles that are performing well — their patterns, word choices, numbers used, emotional triggers. Your 10 generated titles must be informed by what is actually working in this niche right now, not generic formulas.\n\n${basePrompt}`
+      : basePrompt;
 
     let result;
     try {
-      result = await callGeminiWithRetry({ prompt, agentType: 'titleBattle', maxTokens: 3000 });
+      result = await callGeminiWithRetry({ prompt, agentType: 'titleBattle', maxTokens: 3500 });
     } catch (err) {
       console.error('[title-battle] Gemini error:', err.message);
       return Response.json(
@@ -56,12 +95,21 @@ export async function POST(request) {
 
     const data = sanitise(result.data);
 
-    // Auto-fill character counts Gemini forgets
+    // Auto-fill character counts
     if (Array.isArray(data.title_variants)) {
       data.title_variants = data.title_variants.map(v => ({
         ...v,
         character_count: v.title?.length || v.character_count || 0,
         ctr_score: typeof v.ctr_score === 'number' ? v.ctr_score : 0,
+      }));
+    }
+
+    // Attach real competing titles for frontend display
+    if (similarVideos?.length > 0) {
+      data._competing_titles = similarVideos.slice(0, 6).map(v => ({
+        title:   v.title,
+        views:   v.views,
+        channel: v.channelName,
       }));
     }
 
@@ -73,12 +121,14 @@ export async function POST(request) {
       success: true,
       data,
       meta: {
-        agent:          'title-battle',
-        duration_ms:    Date.now() - startMs,
-        variant_count:  data.title_variants?.length || 0,
-        winner:         data.winner?.title || null,
-        dna_injected: !!guard.dnaBlock,
-        session_id:  guard.sessionId,
+        agent:           'title-battle',
+        duration_ms:     Date.now() - startMs,
+        variant_count:   data.title_variants?.length || 0,
+        winner:          data.winner?.title || null,
+        real_data_used:  !!(similarVideos?.length),
+        videos_analysed: similarVideos?.length || 0,
+        dna_injected:    !!guard.dnaBlock,
+        session_id:      guard.sessionId,
       },
     });
 

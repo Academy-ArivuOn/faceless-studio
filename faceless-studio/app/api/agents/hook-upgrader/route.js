@@ -1,10 +1,15 @@
+// app/api/agents/hook-upgrader/route.js
 export const runtime     = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 40;
 
-import { guardAgentWithContext }   from '@/app/api/agents/plan-guard-with-chain';
-import { buildHookUpgraderPrompt }  from '@/packages/agents/pro-prompts';
-import { callGeminiWithRetry }      from '@/packages/gemini';
-import { sanitise }                 from '@/packages/agents/validator';
+import { guardAgentWithContext }  from '@/app/api/agents/plan-guard-with-chain';
+import { buildHookUpgraderPrompt } from '@/packages/agents/pro-prompts';
+import { callGeminiWithRetry }     from '@/packages/gemini';
+import { sanitise }                from '@/packages/agents/validator';
+import {
+  fetchTrendingVideos,
+  buildRealDataBlock,
+} from '@/packages/web-intelligence';
 
 export async function POST(request) {
   const startMs = Date.now();
@@ -29,6 +34,30 @@ export async function POST(request) {
     if (!platform)
       return Response.json({ error: 'platform is required' }, { status: 400 });
 
+    // ── Fetch real high-performing titles for hook pattern analysis ────────────
+    console.log(`[hook-upgrader] Fetching real performing titles for niche: ${niche}`);
+    const trendingVideos = await fetchTrendingVideos(niche, platform).catch(() => []);
+
+    let realDataBlock = '';
+
+    if (trendingVideos?.length > 0) {
+      // Top performing titles as examples of proven hooks
+      const highEngagement = trendingVideos
+        .filter(v => v.views > 10000)
+        .slice(0, 10);
+
+      if (highEngagement.length > 0) {
+        realDataBlock = buildRealDataBlock(
+          'Real High-Performing Titles in This Niche (Study Their Hooks)',
+          highEngagement.map((v, i) =>
+            `${i + 1}. "${v.title}"
+   Views: ${v.views.toLocaleString('en-IN')} | Channel: ${v.channel}
+   Published: ${v.publishedAt?.slice(0, 10) || 'N/A'}`
+          ).join('\n\n')
+        );
+      }
+    }
+
     const cleanInput = {
       weakHook: weakHook.trim().slice(0, 500),
       niche:    niche.trim().slice(0, 150),
@@ -38,11 +67,14 @@ export async function POST(request) {
       _chainBlock: guard.chainBlock || '',
     };
 
-    const prompt = buildHookUpgraderPrompt(cleanInput);
+    const basePrompt = buildHookUpgraderPrompt(cleanInput);
+    const prompt = realDataBlock
+      ? `${realDataBlock}\n\nUSE THE REAL PERFORMING TITLES ABOVE as reference. Study the opening words, emotional triggers, and structure of these actual high-view titles in this niche. Your 5 hook rewrites must be informed by proven patterns from this real data — not generic examples.\n\n${basePrompt}`
+      : basePrompt;
 
     let result;
     try {
-      result = await callGeminiWithRetry({ prompt, agentType: 'hookUpgrade', maxTokens: 2500 });
+      result = await callGeminiWithRetry({ prompt, agentType: 'hookUpgrade', maxTokens: 3000 });
     } catch (err) {
       console.error('[hook-upgrader] Gemini error:', err.message);
       return Response.json(
@@ -72,13 +104,14 @@ export async function POST(request) {
       success: true,
       data,
       meta: {
-        agent:          'hook-upgrader',
-        duration_ms:    Date.now() - startMs,
-        upgrade_count:  data.upgrades?.length || 0,
-        diagnosis:      data.diagnosis?.weakness_type || null,
-        winner:         data.winner?.hook_text?.slice(0, 80) || null,
-        dna_injected: !!guard.dnaBlock,
-        session_id:  guard.sessionId,
+        agent:           'hook-upgrader',
+        duration_ms:     Date.now() - startMs,
+        upgrade_count:   data.upgrades?.length || 0,
+        diagnosis:       data.diagnosis?.weakness_type || null,
+        winner:          data.winner?.hook_text?.slice(0, 80) || null,
+        real_data_used:  trendingVideos?.length > 0,
+        dna_injected:    !!guard.dnaBlock,
+        session_id:      guard.sessionId,
       },
     });
 
